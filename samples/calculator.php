@@ -1,7 +1,7 @@
 <?php
 /**
  * Created by PhpStorm.
- * User: Сергей
+ * User: РЎРµСЂРіРµР№
  * Date: 08.06.15
  * Time: 15:35
  */
@@ -22,7 +22,7 @@ $r->option(array(
             if (!is_array($op) || !isset($op['data']))
                 $result = $op;
             else {
-                $result = 0 + $op['data']; // явное преобразование к числу
+                $result = 0 + $op['data']; // СЏРІРЅРѕРµ РїСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёРµ Рє С‡РёСЃР»Сѓ
             }
             return $result;
         },

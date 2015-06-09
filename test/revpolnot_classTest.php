@@ -2,7 +2,7 @@
 
 /**
  * Created by PhpStorm.
- * User: Сергей
+ * User: РЎРµСЂРіРµР№
  * Date: 08.06.15
  * Time: 13:53
  */
@@ -10,8 +10,8 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
 {
 
     /**
-     * проверка строительства дерева синтаксиса +
-     * массовых вычислений. не остается ли грязи между итерациями?
+     * РїСЂРѕРІРµСЂРєР° СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° РґРµСЂРµРІР° СЃРёРЅС‚Р°РєСЃРёСЃР° +
+     * РјР°СЃСЃРѕРІС‹С… РІС‹С‡РёСЃР»РµРЅРёР№. РЅРµ РѕСЃС‚Р°РµС‚СЃСЏ Р»Рё РіСЂСЏР·Рё РјРµР¶РґСѓ РёС‚РµСЂР°С†РёСЏРјРё?
      */
     function testBuildingSyntaxTree()
     {
@@ -40,7 +40,7 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * проверка результата
+     * РїСЂРѕРІРµСЂРєР° СЂРµР·СѓР»СЊС‚Р°С‚Р°
      */
     function testClassCalculation()
     {
@@ -65,8 +65,8 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * Тестовая функция для проверки логического модуля
-     * Реализация исчисления тега - сравнение значения на > c константой
+     * РўРµСЃС‚РѕРІР°СЏ С„СѓРЅРєС†РёСЏ РґР»СЏ РїСЂРѕРІРµСЂРєРё Р»РѕРіРёС‡РµСЃРєРѕРіРѕ РјРѕРґСѓР»СЏ
+     * Р РµР°Р»РёР·Р°С†РёСЏ РёСЃС‡РёСЃР»РµРЅРёСЏ С‚РµРіР° - СЃСЂР°РІРЅРµРЅРёРµ Р·РЅР°С‡РµРЅРёСЏ РЅР° > c РєРѕРЅСЃС‚Р°РЅС‚РѕР№
      * @param $op
      * @return bool
      */
@@ -113,7 +113,7 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
             }
         } else if ($op == 'NOT' && $unop) {
             $result = !call_user_func($evaluate, $_2);
-        } else if ($op == 'NOT') { // делаем AND NOT
+        } else if ($op == 'NOT') { // РґРµР»Р°РµРј AND NOT
             if ($_1 === false || $_2 === true)
                 $result = false;
             else
@@ -123,7 +123,7 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * проверка числового калькулятора
+     * РїСЂРѕРІРµСЂРєР° С‡РёСЃР»РѕРІРѕРіРѕ РєР°Р»СЊРєСѓР»СЏС‚РѕСЂР°
      */
     function testNumberCalculation()
     {
@@ -140,7 +140,7 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
                 if (!is_array($op) || !isset($op['data']))
                     $result = $op;
                 else {
-                    $result = 0 + $op['data']; // явное преобразование к числу
+                    $result = 0 + $op['data']; // СЏРІРЅРѕРµ РїСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёРµ Рє С‡РёСЃР»Сѓ
                 }
                 return $result;
             },
