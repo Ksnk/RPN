@@ -29,6 +29,11 @@ class revpolnot_class
     /**
      * массив зарезервированных слов. ѕо нему будем строить регул€рку
      * «арезервированные слова используютс€ в качестве предопределенных функций
+     *  'IF'=>0,'THEN'=>0 - стоп-слово
+     *  'SIN'=>1 - функци€ с одним параметром
+     *  'EXP'=>2 - функци€ с 2-м€ параметрами
+     *  'ECHO'=>-1 - функци€ с неопределенным количеством параметров
+     * ¬се зарезервированные слова об€заны обрабатыватьс€ evalTag'ом
      */
     protected $reserved_words = array();
 
@@ -38,12 +43,20 @@ class revpolnot_class
     protected $exception_class_name='Exception';
 
     /**
-     * временные переменные, только на врем€ трансл€ции.
+     * callback - обработчики
+     */
+    protected $executeOp=false;
+    protected $evaluateTag=false;
+
+    /**
+     * временные переменные, только на врем€ трансл€ции или инициализации.
      */
     private $start = 0;
     private $errors = array();
     private $sintaxreg = '##i';
     private $tagreg = '';
+
+    private $option_compiled=false;
 
     /**
      * вывод информации в лог отладки
@@ -73,10 +86,12 @@ class revpolnot_class
         if (0 != ($this->flags & self::SHOW_ERROR)) {
             echo "\n" . $mess . '<br />';
         }
+        return false;
     }
 
     /**
-     * сюда мы будем бросать кости. ѕотом все вот это назовем полностью кастомизируемым объектом.
+     * сюда мы будем бросать кости. ѕотом все вот это назовем полностью
+     * кастомизируемым объектом.
      * Ќа самом деле мы просто сливаем наверх заботу о параметрах
      * @param $opt
      */
@@ -99,11 +114,20 @@ class revpolnot_class
                 }
             }
         }
+        $this->option_compiled=false;
+    }
+
+    private function compile_options(){
         // строим регул€рку по всем определенным параметрам
         $reg = '#\s*(';
         $simbols = array();
 
-        $tags = array_unique(array_merge($this->reserved_words, array_keys($this->operation), array_keys($this->unop), array_keys($this->suffix)));
+        $tags = array_unique(array_merge(
+            array_keys($this->reserved_words),
+            array_keys($this->operation),
+            array_keys($this->unop),
+            array_keys($this->suffix))
+        );
         $this->operation['_EMPTY_'] = 3;
         if (!empty($tags))
             foreach ($tags as $v) {
@@ -124,6 +148,7 @@ class revpolnot_class
             $reg .= $this->tagreg . ')#i';
         $this->log('reg:' . $reg);
         $this->sintaxreg = $reg;
+        $this->option_compiled=true;
     }
 
     /**
@@ -135,10 +160,7 @@ class revpolnot_class
      */
     private function pushop($op, &$opstack, &$result, $unop = false)
     {
-        if ($unop)
-            $prio = 10;
-        else
-            $prio = $this->operation[$op];
+        $prio = $unop?10:$this->operation[$op];
         while (!empty($opstack) && $op != '(') {
             $past = array_pop($opstack);
             if ($past['op'] == '(' && $op == ')') {
@@ -167,23 +189,17 @@ class revpolnot_class
     /**
      * транслируем в обратную польскую форму
      * @param $code
-     * @param int $st
      * @return array
      */
-    private function LtoP($code, $st = 0)
+    private function LtoP($code)
     {
-        if ($st == 0) {
-            $code = strtoupper($code);
-            $this->errors = array();
-            $this->start = 0;
-        }
         $result = array();
         $op = array(array('op' => '('));
         $place_operand = true;
         while (preg_match($this->sintaxreg, $code, $m, PREG_OFFSET_CAPTURE, $this->start)) {
             //$this->log('found:'.json_encode($m[0]).$this->start);
             if ($this->start != $m[0][1]) {
-                $this->log('error:' . json_encode($m[0]) . $this->start . ' ' . $st);
+                $this->log('error:' . json_encode($m[0]) . $this->start );
                 $this->error(sprintf('[%d:%d] ', $this->start, $m[0][1] - $this->start));
             }
             $tag = $m[1][0];
@@ -194,7 +210,7 @@ class revpolnot_class
                         $this->pushop('_EMPTY_', $op, $result);
                     }
                     $this->pushop('(', $op, $result);
-                    $result = array_merge($result, $this->LtoP($code, $this->start));
+                    $result = array_merge($result, $this->LtoP($code));
                     $this->pushop(')', $op, $result);
                     $place_operand = false;
                     break;
@@ -224,10 +240,6 @@ class revpolnot_class
                     }
             }
         }
-        if ($st == 0 && $this->start < strlen($code)) {
-            $this->log('xxx:' . $this->start . ' ' . $st);
-            $this->error(sprintf('[%d:%d] ', $this->start, strlen($code) - $this->start));
-        }
         if (!empty($op)) { // финиш -- автоматическое закрытие скобок?
             $this->pushop(')', $op, $result);
         }
@@ -237,15 +249,32 @@ class revpolnot_class
     /**
      * evaluate, вроде как
      * @param string $code
-     * @param callback $evaluateTag
-     * @param callable|string $executeOp
+     * @param bool $execute
      * @return mixed
      */
-    function ev($code, $evaluateTag = null, $executeOp = null)
+    function ev($code,$execute=true)//, $evaluateTag = null, $executeOp = null)
     {
+        if(!$this->option_compiled){
+            $this->compile_options();
+        }
+
+        $code = strtoupper($code);
+        $this->errors = array();
+        $this->start = 0;
+
         $st = $this->LtoP($code);
-        if (is_null($evaluateTag) or is_null($executeOp) )
+
+        if ( $this->start < strlen($code)) {
+            $this->log('xxx:' . $this->start );
+            $this->error(sprintf('[%d:%d] ', $this->start, strlen($code) - $this->start));
+        }
+        if (!$execute) {
             return $st;
+        }
+        if( is_null($this->evaluateTag) || is_null($this->executeOp)){
+            $this->error('Ќе указаны callback обработчики');
+            return false;
+        }
         // вычисл€ем
         $op = array(); // стек операндов
         foreach ($st as $r) {
@@ -254,13 +283,13 @@ class revpolnot_class
             else {
                 if (!empty($r['unop'])) {
                     // унарные операции
-                    $op[] = call_user_func($executeOp, $r['op'], false, array_pop($op), $evaluateTag, true);
+                    $op[] = call_user_func($this->executeOp, $r['op'], false, array_pop($op), $this->evaluateTag, true);
                 } else { // бинарные операции
                     $_2 = array_pop($op);
-                    $op[] = call_user_func($executeOp, $r['op'], array_pop($op), $_2, $evaluateTag);
+                    $op[] = call_user_func($this->executeOp, $r['op'], array_pop($op), $_2, $this->evaluateTag);
                 }
             }
         }
-        return call_user_func($evaluateTag, array_pop($op));
+        return call_user_func($this->evaluateTag, array_pop($op));
     }
 }

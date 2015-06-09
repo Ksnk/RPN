@@ -35,7 +35,7 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
                      '(172* (501* and (173* (234* or (4567* (345* and (345 not 128)))))))' => '[{"data":"172"},{"op":"*","unop":true},{"data":"501"},{"op":"*","unop":true},{"data":"173"},{"op":"*","unop":true},{"data":"234"},{"op":"*","unop":true},{"data":"4567"},{"op":"*","unop":true},{"data":"345"},{"op":"*","unop":true},{"data":"345"},{"data":"128"},{"op":"NOT"},{"op":"AND"},{"op":"_EMPTY_"},{"op":"OR"},{"op":"_EMPTY_"},{"op":"AND"},{"op":"_EMPTY_"}]',
                  ] as $k => $v) {
             $this->assertEquals('[]', json_encode($r->error()));
-            $this->assertEquals($k . "\n" . $v, $k . "\n" . json_encode($r->ev($k)));
+            $this->assertEquals($k . "\n" . $v, $k . "\n" . json_encode($r->ev($k,false)));
         }
     }
 
@@ -51,14 +51,16 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
             'suffix' => ['*' => 3],
             'tagreg' => '\b(\d+)\b',
             'unop' => ['NOT' => 3],
+
+            'evaluateTag' => [$this, '_celOp'],
+            'executeOp' => [$this, '_celOpr']
         ));
         foreach ([
                      '(172* ) OR (501* OR 128) AND NOT 201*' => true,
                      '(172* ) OR not(501* OR 128) AND NOT 201*' => false,
                  ] as $k => $v) {
             $this->assertEquals('[]', json_encode($r->error()));
-            $this->assertEquals($k . "\n" . json_encode($v), $k . "\n" . json_encode($r->ev($k,
-                    [$this, '_celOp'], [$this, '_celOpr'])));
+            $this->assertEquals($k . "\n" . json_encode($v), $k . "\n" . json_encode($r->ev($k)));
         }
     }
 
@@ -132,6 +134,35 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
             'suffix' => ['++' => 1],
             'unop' => ['-' => 1],
             'tagreg' => '\b(\d+)\b',
+
+            'evaluateTag' => function ($op) use ($r) {
+                $r->log('eval:' . json_encode($op));
+                if (!is_array($op) || !isset($op['data']))
+                    $result = $op;
+                else {
+                    $result = 0 + $op['data']; // явное преобразование к числу
+                }
+                return $result;
+            },
+            'executeOp' => function ($op, $_1, $_2, $evaluate, $unop = false) use ($r) {
+                $r->log('oper:' . json_encode($_1) . ' ' . $op . ' ' . json_encode($_2));
+                if ($op == '+') {
+                    return call_user_func($evaluate, $_1) + call_user_func($evaluate, $_2);
+                } else if ($op == '++') {
+                    return call_user_func($evaluate, $_2) + 1;
+                } else if ($op == '-' && $unop) {
+                    return -call_user_func($evaluate, $_2);
+                } else if ($op == '-') {
+                    return call_user_func($evaluate, $_1) - call_user_func($evaluate, $_2);
+                } else if ($op == '*') {
+                    return call_user_func($evaluate, $_1) * call_user_func($evaluate, $_2);
+                } else if ($op == '/') {
+                    return call_user_func($evaluate, $_1) / call_user_func($evaluate, $_2);
+                } else {
+                    $r->error('unknown operation '.$op);
+                }
+                return 0;
+            }
         ));
         foreach ([
                      '1' => 1,
@@ -139,36 +170,7 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
                      '(-3*-----4)*4++/5' => 12,
                      '1+2+3+4+5' => 15,
                  ] as $k => $v) {
-            $result = $r->ev($k,
-                function ($op) use ($r) {
-                    $r->log('eval:' . json_encode($op));
-                    if (!is_array($op) || !isset($op['data']))
-                        $result = $op;
-                    else {
-                        $result = 0 + $op['data']; // явное преобразование к числу
-                    }
-                    return $result;
-                },
-                function ($op, $_1, $_2, $evaluate, $unop = false) use ($r) {
-                    $r->log('oper:' . json_encode($_1) . ' ' . $op . ' ' . json_encode($_2));
-                    if ($op == '+') {
-                        return call_user_func($evaluate, $_1) + call_user_func($evaluate, $_2);
-                    } else if ($op == '++') {
-                        return call_user_func($evaluate, $_2) + 1;
-                    } else if ($op == '-' && $unop) {
-                        return -call_user_func($evaluate, $_2);
-                    } else if ($op == '-') {
-                        return call_user_func($evaluate, $_1) - call_user_func($evaluate, $_2);
-                    } else if ($op == '*') {
-                        return call_user_func($evaluate, $_1) * call_user_func($evaluate, $_2);
-                    } else if ($op == '/') {
-                        return call_user_func($evaluate, $_1) / call_user_func($evaluate, $_2);
-                    } else {
-                        $r->error('unknown operation '.$op);
-                    }
-                    return 0;
-                }
-            );
+            $result = $r->ev($k);
             $this->assertEquals('[]', json_encode($r->error()));
             $this->assertEquals($k . "\n" . json_encode($v), $k . "\n" . json_encode($result));
         }

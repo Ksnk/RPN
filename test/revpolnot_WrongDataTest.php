@@ -29,7 +29,7 @@ class revpolnot_WrongDataTest extends PHPUnit_Framework_TestCase
             '((172* 501*))))))))) not 128'=>['["[14:14] "]','[{"data":"172"},{"op":"*","unop":true},{"data":"501"},{"op":"*","unop":true},{"op":"_EMPTY_"}]'],
                      '((((((((172* 501*))) not 128'=>['[]','[{"data":"172"},{"op":"*","unop":true},{"data":"501"},{"op":"*","unop":true},{"op":"_EMPTY_"},{"data":"128"},{"op":"NOT"}]'],
                  ] as $k => $v) {
-            $result=$r->ev($k);
+            $result=$r->ev($k,false);
             $this->assertEquals($v[0], json_encode($r->error()));
             $this->assertEquals($k . "\n" . $v[1], $k . "\n" . json_encode($result));
         }
@@ -57,7 +57,7 @@ class revpolnot_WrongDataTest extends PHPUnit_Framework_TestCase
                  ] as $k => $v) {
             $mess='';
             try{
-                $result=$r->ev($k);
+                $result=$r->ev($k,false);
             } catch(Exception $e){
                 $mess=$e->getMessage();
             }
