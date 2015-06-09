@@ -46,6 +46,8 @@ echo "\n".json_encode($r->ev($code,
                 return call_user_func($evaluate,$_1)*call_user_func($evaluate,$_2);
             } else if($op=='/') {
                 return call_user_func($evaluate,$_1)/call_user_func($evaluate,$_2);
+            } else {
+                $r->error('unknown operation '.$op);
             }
             return 0;
         }
