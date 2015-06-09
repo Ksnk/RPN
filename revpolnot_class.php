@@ -58,6 +58,9 @@ class revpolnot_class
 
     private $option_compiled=false;
 
+    private $ex_stack=array();
+    private $syntax_tree=array();
+
     /**
      * вывод информации в лог отладки
      * @param $mess
@@ -155,10 +158,9 @@ class revpolnot_class
      * Вот так мы боремся со скобочками.
      * @param $op
      * @param $opstack
-     * @param $result
      * @param bool $unop
      */
-    private function pushop($op, &$opstack, &$result, $unop = false)
+    private function pushop($op, &$opstack, $unop = false)
     {
         $prio = $unop?10:$this->operation[$op];
         while (!empty($opstack) && $op != '(') {
@@ -171,7 +173,7 @@ class revpolnot_class
                 if (!empty($past['unop'])) {
                     $data['unop'] = $past['unop'];
                 }
-                $result[] = $data;
+                $this->syntax_tree[] = $data;
             } else {
                 $opstack[] = $past;
                 break;
@@ -193,7 +195,6 @@ class revpolnot_class
      */
     private function LtoP($code)
     {
-        $result = array();
         $op = array(array('op' => '('));
         $place_operand = true;
         while (preg_match($this->sintaxreg, $code, $m, PREG_OFFSET_CAPTURE, $this->start)) {
@@ -207,25 +208,25 @@ class revpolnot_class
             switch ($tag) {
                 case '(':
                     if (!$place_operand) {
-                        $this->pushop('_EMPTY_', $op, $result);
+                        $this->pushop('_EMPTY_', $op);
                     }
-                    $this->pushop('(', $op, $result);
-                    $result = array_merge($result, $this->LtoP($code));
-                    $this->pushop(')', $op, $result);
+                    $this->pushop('(', $op);
+                    $this->LtoP($code);
+                    $this->pushop(')', $op);
                     $place_operand = false;
                     break;
                 case ')':
                     break 2;
                 case ',':
-                    $this->pushop(',', $op, $result);
+                    $this->pushop(',', $op);
                     break 2;
                 default:
                     if (isset($this->unop[$tag]) && $place_operand) {
-                        $this->pushop($tag, $op, $result, true);
+                        $this->pushop($tag, $op, true);
                     } else if (isset($this->suffix[$tag]) && !$place_operand) {
-                        $result[] = array('op' => $tag, 'unop' => true);
+                        $this->syntax_tree[] = array('op' => $tag, 'unop' => true);
                     } else if (isset($this->operation[$tag]) && !$place_operand) {
-                        $this->pushop($tag, $op, $result);
+                        $this->pushop($tag, $op);
                         $place_operand = true;
                     } else {
                         if (isset($this->operation[$tag]) || isset($this->suffix[$tag]) || isset($this->unop[$tag])) {
@@ -233,17 +234,18 @@ class revpolnot_class
                         }
 
                         if (!$place_operand) { // если операции нет - савим пустую операцию
-                            $this->pushop('_EMPTY_', $op, $result);
+                            $this->pushop('_EMPTY_', $op);
                         }
-                        $result[] = array('data' => $m[2][0]);
+                        $this->syntax_tree[] = array('data' => $m[2][0]);
                         $place_operand = false;
                     }
             }
+            if(count($this->syntax_tree)>5)
+                $this->execute();
         }
         if (!empty($op)) { // финиш -- автоматическое закрытие скобок?
-            $this->pushop(')', $op, $result);
+            $this->pushop(')', $op);
         }
-        return $result;
     }
 
     /**
@@ -262,34 +264,42 @@ class revpolnot_class
         $this->errors = array();
         $this->start = 0;
 
-        $st = $this->LtoP($code);
+        $this->syntax_tree = array();
+        $this->ex_stack = array(); // стек операндов
+        $this->LtoP($code);
 
         if ( $this->start < strlen($code)) {
             $this->log('xxx:' . $this->start );
             $this->error(sprintf('[%d:%d] ', $this->start, strlen($code) - $this->start));
         }
         if (!$execute) {
-            return $st;
+            return $this->syntax_tree;
         }
         if( is_null($this->evaluateTag) || is_null($this->executeOp)){
             $this->error('Не указаны callback обработчики');
             return false;
         }
         // вычисляем
-        $op = array(); // стек операндов
-        foreach ($st as $r) {
+        $this->execute();
+        return call_user_func($this->evaluateTag, array_pop($this->ex_stack));
+    }
+
+    private function execute(){
+        if(empty($this->evaluateTag) || empty($this->executeOp))
+            return;
+        while(!empty($this->syntax_tree)){
+            $r=array_shift($this->syntax_tree);
             if (isset($r['data']))
-                $op[] = $r;
+                $this->ex_stack[] = $r;
             else {
                 if (!empty($r['unop'])) {
                     // унарные операции
-                    $op[] = call_user_func($this->executeOp, $r['op'], false, array_pop($op), $this->evaluateTag, true);
+                    $this->ex_stack[] = call_user_func($this->executeOp, $r['op'], false, array_pop($this->ex_stack), $this->evaluateTag, true);
                 } else { // бинарные операции
-                    $_2 = array_pop($op);
-                    $op[] = call_user_func($this->executeOp, $r['op'], array_pop($op), $_2, $this->evaluateTag);
+                    $_2 = array_pop($this->ex_stack);
+                    $this->ex_stack[] = call_user_func($this->executeOp, $r['op'], array_pop($this->ex_stack), $_2, $this->evaluateTag);
                 }
             }
         }
-        return call_user_func($this->evaluateTag, array_pop($op));
     }
 }
