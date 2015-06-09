@@ -1,7 +1,8 @@
 <?php
 
 /**
- * полностью кастомизируемый класс дл€ анализа скобочной записи и трансл€ии ее в обратную прольскую форму
+ * полностью кастомизируемый класс дл€ анализа скобочной записи и трансл€ции ее
+ * в обратную прольскую форму
  * с вызовами и определ€емыми юзером операци€ми
  *
  * » никакой статики,  арл...
@@ -9,44 +10,73 @@
 class revpolnot_class
 {
 
-    var $flags = 0; // 1 exception,2-stop on error,4-error, 8-debug
+    const
+        THROW_EXCEPTION_ONERROR = 1,
+        STOP_ONERROR = 2,
+        SHOW_ERROR = 4,
+        SHOW_DEBUG = 8;
+
+    protected $flags = 0; // 1 exception, 2-stop on error, 4-error, 8-debug
+    // todo: NOEMPTYFUNCTION, FREECALL
 
     /**
      * массив операций, суффиксов и унарных. ѕо нему будем строить регул€рку
      */
-    var $operation = array();
-    var $suffix = array();
-    var $unop = array();
+    protected $operation = array();
+    protected $suffix = array();
+    protected $unop = array();
 
     /**
      * массив зарезервированных слов. ѕо нему будем строить регул€рку
+     * «арезервированные слова используютс€ в качестве предопределенных функций
      */
-    var $reserved_words = array();
+    protected $reserved_words = array();
 
     /**
-     * временные переменные, только на врем€ трансл€ции
+     * им€ класса дл€ вызова исключени€
      */
-    var $start = 0;
-    var $errors = array();
-    var $sintaxreg = '##i';
-    var $tagreg = '';
+    protected $exception_class_name='Exception';
+
+    /**
+     * временные переменные, только на врем€ трансл€ции.
+     */
+    private $start = 0;
+    private $errors = array();
+    private $sintaxreg = '##i';
+    private $tagreg = '';
 
     /**
      * вывод информации в лог отладки
      * @param $mess
-     * @param int $flag
      */
-    public function log($mess, $flag = 8)
+    public function log($mess)
     {
-        if ($flag & 4)
-            $this->errors[] = $mess;
-        if (0 == ($this->flags & $flag)) return;
-        // if($this->flags & 4) rase
+        if (0 == ($this->flags & self::SHOW_DEBUG)) return;
         echo "\n" . $mess . '<br />';
     }
 
     /**
-     * сюда мы будем бросать кости. ѕотом все вот это назовем полностью кастомизуемым объектом.
+     * вывод информации об ошибке
+     * @param $mess
+     * @return array
+     */
+    public function error($mess=null)
+    {
+        if(is_null($mess))
+            return $this->errors;
+
+        $this->errors[] = $mess;
+        if (0 != ($this->flags & self::THROW_EXCEPTION_ONERROR)) {
+            $ex=$this->exception_class_name;
+            throw new $ex($mess);
+        };
+        if (0 != ($this->flags & self::SHOW_ERROR)) {
+            echo "\n" . $mess . '<br />';
+        }
+    }
+
+    /**
+     * сюда мы будем бросать кости. ѕотом все вот это назовем полностью кастомизируемым объектом.
      * Ќа самом деле мы просто сливаем наверх заботу о параметрах
      * @param $opt
      */
@@ -154,7 +184,7 @@ class revpolnot_class
             //$this->log('found:'.json_encode($m[0]).$this->start);
             if ($this->start != $m[0][1]) {
                 $this->log('error:' . json_encode($m[0]) . $this->start . ' ' . $st);
-                $this->log(sprintf('[%d:%d] ', $this->start, $m[0][1] - $this->start), 4);
+                $this->error(sprintf('[%d:%d] ', $this->start, $m[0][1] - $this->start));
             }
             $tag = $m[1][0];
             $this->start = $m[0][1] + strlen($m[0][0]);
@@ -183,7 +213,7 @@ class revpolnot_class
                         $place_operand = true;
                     } else {
                         if (isset($this->operation[$tag]) || isset($this->suffix[$tag]) || isset($this->unop[$tag])) {
-                            $this->log(sprintf('improper place for `%s`', $tag), 4);
+                            $this->error(sprintf('improper place for `%s`', $tag));
                         }
 
                         if (!$place_operand) { // если операции нет - савим пустую операцию
@@ -196,7 +226,7 @@ class revpolnot_class
         }
         if ($st == 0 && $this->start < strlen($code)) {
             $this->log('xxx:' . $this->start . ' ' . $st);
-            $this->log(sprintf('[%d:%d] ', $this->start, strlen($code) - $this->start), 4);
+            $this->error(sprintf('[%d:%d] ', $this->start, strlen($code) - $this->start));
         }
         if (!empty($op)) { // финиш -- автоматическое закрытие скобок?
             $this->pushop(')', $op, $result);
@@ -205,6 +235,7 @@ class revpolnot_class
     }
 
     /**
+     * evaluate, вроде как
      * @param string $code
      * @param callback $evaluateTag
      * @param callable|string $executeOp
@@ -213,9 +244,8 @@ class revpolnot_class
     function ev($code, $evaluateTag = null, $executeOp = null)
     {
         $st = $this->LtoP($code);
-        if (is_null($evaluateTag))
+        if (is_null($evaluateTag) or is_null($executeOp) )
             return $st;
-        if (is_null($executeOp)) $executeOp = array($this, 'executeOpLogical');
         // вычисл€ем
         $op = array(); // стек операндов
         foreach ($st as $r) {
@@ -231,6 +261,6 @@ class revpolnot_class
                 }
             }
         }
-        return array_pop($op);
+        return call_user_func($evaluateTag, array_pop($op));
     }
 }
