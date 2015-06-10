@@ -17,7 +17,9 @@ class revpolnot_WrongDataTest extends PHPUnit_Framework_TestCase
     {
         $r = new revpolnot_class();
         $r->option(array(
-            // 'flags' => 12,
+            'flags' => revpolnot_class::EMPTY_FUNCTION_ALLOWED
+  //      | 12
+        ,
             'operation' => ['AND' => 3, 'OR' => 3, 'NOT' => 3],
             'suffix' => ['*' => 3],
             'tagreg' => '\b(\d+)\b',
@@ -42,7 +44,7 @@ class revpolnot_WrongDataTest extends PHPUnit_Framework_TestCase
     {
         $r = new revpolnot_class();
         $r->option(array(
-             'flags' =>0
+             'flags' =>revpolnot_class::EMPTY_FUNCTION_ALLOWED
                  +revpolnot_class::THROW_EXCEPTION_ONERROR,
             'operation' => ['AND' => 3, 'OR' => 3, 'NOT' => 3],
             'suffix' => ['*' => 3],

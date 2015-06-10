@@ -15,7 +15,7 @@ set_error_handler(function ($c, $m, $f, $l) {
 }, E_ALL & ~E_NOTICE);
 
 $r->option(array(
-    // 'flags'=>12,
+  //  'flags'=>0,
     'operation' => ['+' => 4, '-' => 4, '*' => 5, '/' => 5, '^' => 7,],
     'suffix' => ['%' => 1],
     'unop' => ['-' => 1, '+' => 1],
@@ -55,6 +55,7 @@ $r->option(array(
         },
     'executeOp' => function ($op, $_1, $_2, $evaluate, $unop = false) use ($r) {
             $r->log('oper:' . json_encode($_1) . ' ' . $op . ' ' . json_encode($_2));
+
             // проверка на процент от прошлого значения
             if (!$unop && is_array($_2) && isset($_2['percent'])) {
                 $_2['data'] = (($_1 = call_user_func($evaluate, $_1)) / 100) * $_2['data'];

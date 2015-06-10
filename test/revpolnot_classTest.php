@@ -20,7 +20,9 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
     {
         $r = new revpolnot_class();
         $r->option(array(
-            // 'flags' => 12,
+            'flags' => revpolnot_class::EMPTY_FUNCTION_ALLOWED
+            //      | 12
+        ,
             'operation' => ['AND' => 3, 'OR' => 3, 'NOT' => 3],
             'suffix' => ['*' => 3],
             'tagreg' => '\b(\d+)\b',
@@ -163,6 +165,7 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
      * repeat:4000 times; peak:42528B, calc:616B, final:360B, 2.366961 sec spent (2015-06-09 14:26:10)
      * repeat:6000 times; peak:62528B, calc:616B, final:360B, 3.522547 sec spent (2015-06-09 14:26:27)
      * repeat:6000 times; peak:62496B, calc:584B, final:328B, 4.935000 sec spent (2015-06-10 14:25:17) // рабочий компьютер
+     * repeat:6000 times; peak:62496B, calc:584B, final:328B, 4.972000 sec spent (2015-06-10 15:43:23)
      *
      */
     function testTrulyLongCalculation()

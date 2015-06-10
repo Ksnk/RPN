@@ -41,7 +41,9 @@ $parents=array_unique($parents);
  */
 $r=new \revpolnot_class();
 $r->option([
-    'flags'=>12,
+    'flags'=>revpolnot_class::EMPTY_FUNCTION_ALLOWED
+    //      | 12
+    ,
     'operation' =>  ['AND'=>3,'OR'=>3,'NOT'=>3],
     'suffix'    =>  ['*'=>3],
     'tagreg'    =>  '\b(\d+)\b',
@@ -108,17 +110,14 @@ echo "\n".json_encode($r->ev($code));
  * преобразуют его в список категорий
  */
 $r->option([
-    'evaluateTag'=>function ($op)  {
+    'evaluateTag'=>function ($op) use ($r,$category_tree) {
         if(!isset($op['data'])) $result= $op;
         else {
-            $result=array(0+$op['data']) ;
-        }
-        return $result;
-    },
-    'executeOp'=>function ($op,$_1,$_2,$evaluate,$unop=false) use ($r,$category_tree){
-            $result=[];
-            if($op=='*' && $unop){
-                $result=call_user_func($evaluate,$_2);
+            if(is_array($op['data']))
+                $result=$op['data'];
+            else
+                $result=array(0+$op['data']) ;
+            if(isset($op['suf'])){
                 $level=$result;
                 do{
                     $level0=array();
@@ -131,6 +130,14 @@ $r->option([
                         $result=array_merge($result,$level0);
                     $level=$level0;
                 } while(!empty($level0));
+            }
+        }
+        return $result;
+    },
+    'executeOp'=>function ($op,$_1,$_2,$evaluate,$unop=false) use ($r,$category_tree){
+            $result=[];
+            if($op=='*' && $unop){
+                $result=array('data'=>call_user_func($evaluate,$_2),'suf'=>'*');
             } else if($op=='OR' || $op=='_EMPTY_'){
                 $result=array_merge(call_user_func($evaluate,$_1),call_user_func($evaluate,$_2));
             } else if($op=='AND') {
