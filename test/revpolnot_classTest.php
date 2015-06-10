@@ -162,6 +162,7 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
      * repeat:2000 times; peak:22528B, calc:616B, final:360B, 1.248044 sec spent (2015-06-09 14:25:53)
      * repeat:4000 times; peak:42528B, calc:616B, final:360B, 2.366961 sec spent (2015-06-09 14:26:10)
      * repeat:6000 times; peak:62528B, calc:616B, final:360B, 3.522547 sec spent (2015-06-09 14:26:27)
+     * repeat:6000 times; peak:62496B, calc:584B, final:328B, 4.935000 sec spent (2015-06-10 14:25:17) // рабочий компьютер
      *
      */
     function testTrulyLongCalculation()
@@ -181,7 +182,7 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
         ));
 
         $repeat=6000;
-        $code=str_repeat('(1+2-4*1)+',$repeat).'0'; // -1 repeated $repeat times about 10*$repeat+1 bytes
+        $code=str_repeat('(1+2-4*1)+',$repeat).'0'; // -1 repeated $repeat times with 10*$repeat+1 bytes long
         $before_calc=memory_get_usage();
         $result = $this->current_rpn->ev($code);
         $peak_mem=memory_get_usage();

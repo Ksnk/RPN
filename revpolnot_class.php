@@ -211,7 +211,7 @@ class revpolnot_class
     {
         $op = array(array('op' => '('));
         $place_operand = true;
-        while ($tag=$this->getnext($code)){
+        while (false!==($tag=$this->getnext($code))){
             switch ($tag) {
                 case '(':
                     if (!$place_operand) {
@@ -231,13 +231,16 @@ class revpolnot_class
                 default:
                     if (isset($this->reserved_words[$tag]) && $place_operand) {
                         // будет вызов
-                        if('('==$this->getnext($code)){
-                            $parcount=1;
-                            while(','==($x=$this->LtoP($code))) $parcount++;
-                            if($x!=')')
-                                $this->error('unclosed parenthesis_1');
-                            if($this->reserved_words[$tag]>0 && $this->reserved_words[$tag]!=$parcount)
-                                $this->error('wrong parameters count');
+                        $parcount=0;
+                        if($this->reserved_words[$tag]!=0){
+                            if('('==$this->getnext($code)){
+                                $parcount=1;
+                                while(','==($x=$this->LtoP($code))) $parcount++;
+                                if($x!=')')
+                                    $this->error('unclosed parenthesis_1');
+                                if($this->reserved_words[$tag]>0 && $this->reserved_words[$tag]!=$parcount)
+                                    $this->error('wrong parameters count');
+                            }
                         }
                         $this->syntax_tree[] = array('call' => $tag,'parcount'=>$parcount);
                         $place_operand = false;
