@@ -12,14 +12,12 @@ class revpolnot_class
 
     const
         THROW_EXCEPTION_ONERROR = 1,
-        STOP_ONERROR = 2, // todo: флаг пока не работает. А надо ли?
+       // STOP_ONERROR = 2, // не пригодился
         SHOW_ERROR = 4,
         SHOW_DEBUG = 8,
         EMPTY_FUNCTION_ALLOWED = 16;
 
     protected $flags = 0; // 1 exception, 2-stop on error, 4-error, 8-debug
-    // todo: NOEMPTYFUNCTION, FREECALL
-
     /**
      * массив операций, суффиксов и унарных. По нему будем строить регулярку
      */
@@ -56,6 +54,7 @@ class revpolnot_class
     private $errors = array();
     private $sintaxreg = '##i';
     private $tagreg = '';
+    private $canexecute=false;
 
     private $option_compiled = false;
 
@@ -177,6 +176,7 @@ class revpolnot_class
                     $data['unop'] = $past['unop'];
                 }
                 $this->syntax_tree[] = $data;
+                if($this->canexecute) $this->execute();
             } else {
                 $opstack[] = $past;
                 break;
@@ -230,33 +230,34 @@ class revpolnot_class
                 case ')':
                     break 2;
                 case ',':
-                    $this->pushop(',', $op);
+                   // $this->pushop(',', $op);
                     break 2;
                 default:
                     if (isset($this->reserved_words[$tag]) && $place_operand) {
                         // будет вызов
                         $parcount = 0;
-                        if ($this->reserved_words[$tag] != 0) {
+                        $_xR=$this->reserved_words[$tag];
+                        if ($_xR != 0) {
                             if ('(' == $this->getnext($code)) {
                                 $parcount = 1;
                                 while (',' == ($x = $this->LtoP($code))) $parcount++;
                                 if ($x != ')')
                                     $this->error('unclosed parenthesis_1');
-                                if ($this->reserved_words[$tag] > 0 && $this->reserved_words[$tag] != $parcount)
+                                if ($_xR > 0 && $_xR != $parcount)
                                     $this->error('wrong parameters count');
                             }
                         }
                         $this->syntax_tree[] = array('call' => $tag, 'parcount' => $parcount);
                         $place_operand = false;
-                    } else if (isset($this->unop[$tag]) && $place_operand) {
+                    } else if (($_xU= isset($this->unop[$tag])) && $place_operand) {
                         $this->pushop($tag, $op, true);
-                    } else if (isset($this->suffix[$tag]) && !$place_operand) {
+                    } else if (($_xS=isset($this->suffix[$tag])) && !$place_operand) {
                         $this->syntax_tree[] = array('op' => $tag, 'unop' => true);
-                    } else if (isset($this->operation[$tag]) && !$place_operand) {
+                    } else if (($_xO=isset($this->operation[$tag])) && !$place_operand) {
                         $this->pushop($tag, $op);
                         $place_operand = true;
                     } else {
-                        if (isset($this->operation[$tag]) || isset($this->suffix[$tag]) || isset($this->unop[$tag])) {
+                        if ($_xO || $_xS || $_xU) {
                             $this->error(sprintf('improper place for `%s`', $tag));
                         }
 
@@ -267,8 +268,6 @@ class revpolnot_class
                         $place_operand = false;
                     }
             }
-            if (count($this->syntax_tree) > 5)
-                $this->execute();
         }
         if (!empty($op)) { // финиш -- автоматическое закрытие скобок?
             $this->pushop(')', $op);
@@ -287,6 +286,7 @@ class revpolnot_class
         if (!$this->option_compiled) {
             $this->compile_options();
         }
+        $this->canexecute=$execute;
 
         $code = strtoupper($code);
         $this->errors = array();
@@ -309,8 +309,12 @@ class revpolnot_class
         }
         // вычисляем
         $this->execute();
-        if (count($this->ex_stack) != 1)
+        if (count($this->ex_stack) < 1){
+            $this->error('something gose wrong.');
+            return null;
+        } else if (count($this->ex_stack) > 1){
             $this->error('something gose wrong!');
+        }
         return call_user_func($this->evaluateTag, array_pop($this->ex_stack));
     }
 
@@ -323,7 +327,7 @@ class revpolnot_class
             if (isset($r['call'])) {
                 $param = array();
                 for ($i = 0; $i < $r['parcount']; $i++) {
-                    $param[] = array_pop($this->ex_stack);
+                    array_unshift($param,array_pop($this->ex_stack));
                 }
                 $this->ex_stack[] = call_user_func($this->executeOp, $r['call'], false, $param, $this->evaluateTag, true);
             } elseif (isset($r['data'])) {

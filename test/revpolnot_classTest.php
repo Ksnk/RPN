@@ -5,6 +5,8 @@
  * User: Сергей
  * Date: 08.06.15
  * Time: 13:53
+ *
+ * @method assertEquals - злой phpstorm не видит моего PHPUnit и обижаеццо
  */
 class revpolnot_classTest extends PHPUnit_Framework_TestCase
 {
@@ -139,7 +141,12 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
             'operation' => ['+' => 4, '-' => 4, '*' => 5, '/' => 5,],
             'suffix' => ['++' => 1],
             'unop' => ['-' => 1],
-            'tagreg' => '\b(\d+)\b',
+           // 'tagreg' => '\b(\d+)\b',
+            'reserved_words' => ['PI' => 0, 'E' => 0,
+                'FLOOR' => 1,
+                'POW' => 2,
+                'SUMM' => -1,
+            ],
 
             'evaluateTag' => [$this, '_calcTag'],
             'executeOp' => [$this, '_calcOp'],
@@ -149,6 +156,7 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
                      '-1' => -1,
                      '(-3*-----4)*4++/5' => 12,
                      '1+2+3+4+5' => 15,
+                    'e+summ(1,2,1,2,1,2,1,2)-pow(3,4)+floor(56/3)'=>-48.2817181715,
                  ] as $k => $v) {
             $result = $r->ev($k);
             $this->assertEquals('[]', json_encode($r->error()));
@@ -164,8 +172,8 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
      * repeat:2000 times; peak:22528B, calc:616B, final:360B, 1.248044 sec spent (2015-06-09 14:25:53)
      * repeat:4000 times; peak:42528B, calc:616B, final:360B, 2.366961 sec spent (2015-06-09 14:26:10)
      * repeat:6000 times; peak:62528B, calc:616B, final:360B, 3.522547 sec spent (2015-06-09 14:26:27)
-     * repeat:6000 times; peak:62496B, calc:584B, final:328B, 4.935000 sec spent (2015-06-10 14:25:17) // рабочий компьютер
-     * repeat:6000 times; peak:62496B, calc:584B, final:328B, 4.972000 sec spent (2015-06-10 15:43:23)
+     * repeat:6000 times; peak:62416B, calc:504B, final:328B, 4.055349 sec spent (2015-06-10 21:53:31)
+     * repeat:6000 times; peak:62448B, calc:536B, final:328B, 4.000997 sec spent (2015-06-11 00:13:14)
      *
      */
     function testTrulyLongCalculation()
@@ -228,6 +236,20 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
             return call_user_func($evaluate, $_1) * call_user_func($evaluate, $_2);
         } else if ($op == '/') {
             return call_user_func($evaluate, $_1) / call_user_func($evaluate, $_2);
+        } elseif ($op == 'PI') {
+            return pi();
+        } elseif ($op == 'E') {
+            return M_E;
+        } elseif ($op == 'POW') {
+            return pow(call_user_func($evaluate, $_2[0]),call_user_func($evaluate, $_2[1]));
+        } elseif ($op == 'FLOOR') {
+            return floor(call_user_func($evaluate, $_2[0]));
+        } elseif ($op == 'SUMM') {
+            $result=0;
+            foreach($_2 as $x){
+                $result+=call_user_func($evaluate, $x);
+            }
+            return $result;
         } else {
             $this->current_rpn->error('unknown operation ' . $op);
         }

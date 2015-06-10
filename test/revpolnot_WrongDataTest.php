@@ -5,6 +5,8 @@
  * User: Сергей
  * Date: 08.06.15
  * Time: 13:53
+ *
+ * @method assertEquals - злой phpstorm не видит моего PHPUnit и обижаеццо
  */
 class revpolnot_WrongDataTest extends PHPUnit_Framework_TestCase
 {
@@ -52,12 +54,13 @@ class revpolnot_WrongDataTest extends PHPUnit_Framework_TestCase
             'unop' => ['NOT' => 3],
         ));
         foreach ([
-                     'Hello world!' =>['"[0:12] "','null'],
-                     '1 andx 2 notand 3 or 4 not to be!'=>['"[1:5] "','null'],
-                     '((172* 501*))))))))) not 128'=>['"[14:14] "','null'],
-                     '((((((((172* 501*))) not 128'=>['"unclosed  parenthesis_0"','null'],
+                     'Hello world!' =>['"[0:12] "','""'],
+                     '1 andx 2 notand 3 or 4 not to be!'=>['"[1:5] "','""'],
+                     '((172* 501*))))))))) not 128'=>['"[14:14] "','""'],
+                     '((((((((172* 501*))) not 128'=>['"unclosed  parenthesis_0"','""'],
+                     '12* 12* * not or or 4'=>['"improper place for `OR`"','""'],
                  ] as $k => $v) {
-            $mess='';
+            $mess='';$result='';
             try{
                 $result=$r->ev($k,false);
             } catch(Exception $e){

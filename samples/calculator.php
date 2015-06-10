@@ -10,7 +10,7 @@ require '../test/autoloader.php';
 // just a simple number calculator
 $r = new revpolnot_class();
 
-set_error_handler(function ($c, $m, $f, $l) {
+set_error_handler(function ($c, $m /*, $f, $l*/) {
     throw new Exception($m, $c);
 }, E_ALL & ~E_NOTICE);
 
@@ -42,6 +42,8 @@ $r->option(array(
         'TAN' => 1,
         'TANH' => 1,
         'CBRT' => 1,
+        'POW' => 2,
+        'SUMM' => -1,
     ],
 
     'evaluateTag' => function ($op) use ($r) {
@@ -61,7 +63,19 @@ $r->option(array(
                 $_2['data'] = (($_1 = call_user_func($evaluate, $_1)) / 100) * $_2['data'];
             }
 
-            if ($op == '%' && $unop) {
+            if ($op == '+') {
+                return call_user_func($evaluate, $_1) + call_user_func($evaluate, $_2);
+            } else if ($op == '^') {
+                return pow(call_user_func($evaluate, $_1), call_user_func($evaluate, $_2));
+            } else if ($op == '-' && $unop) {
+                return -call_user_func($evaluate, $_2);
+            } else if ($op == '-') {
+                return call_user_func($evaluate, $_1) - call_user_func($evaluate, $_2);
+            } else if ($op == '*') {
+                return call_user_func($evaluate, $_1) * call_user_func($evaluate, $_2);
+            } else if ($op == '/') {
+                return call_user_func($evaluate, $_1) / call_user_func($evaluate, $_2);
+            } else if ($op == '%' && $unop) {
                 return array('data' => call_user_func($evaluate, $_2), 'percent' => '1');
             } elseif ($op == 'PI') {
                 return pi();
@@ -83,11 +97,11 @@ $r->option(array(
                 return atanh(call_user_func($evaluate, $_2[0]));
             } elseif ($op == 'EXP') {
                 return exp(call_user_func($evaluate, $_2[0]));
+            } elseif ($op == 'POW') {
+                return pow(call_user_func($evaluate, $_2[0]),call_user_func($evaluate, $_2[1]));
             } elseif ($op == 'FLOOR') {
                 return floor(call_user_func($evaluate, $_2[0]));
-            } elseif ($op == 'FLOOR') {
-                return floor(call_user_func($evaluate, $_2[0]));
-            } elseif ($op == 'LOG' || $op == 'LN') {
+             } elseif ($op == 'LOG' || $op == 'LN') {
                 return log(call_user_func($evaluate, $_2[0]));
             } elseif ($op == 'SIGN') {
                 $number = call_user_func($evaluate, $_2[0]);
@@ -110,18 +124,12 @@ $r->option(array(
                 return tanh(call_user_func($evaluate, $_2[0]));
             } elseif ($op == 'CBRT') {
                 return pow(call_user_func($evaluate, $_2[0]), 1 / 3);
-            } else if ($op == '+') {
-                return call_user_func($evaluate, $_1) + call_user_func($evaluate, $_2);
-            } else if ($op == '^') {
-                return pow(call_user_func($evaluate, $_1), call_user_func($evaluate, $_2));
-            } else if ($op == '-' && $unop) {
-                return -call_user_func($evaluate, $_2);
-            } else if ($op == '-') {
-                return call_user_func($evaluate, $_1) - call_user_func($evaluate, $_2);
-            } else if ($op == '*') {
-                return call_user_func($evaluate, $_1) * call_user_func($evaluate, $_2);
-            } else if ($op == '/') {
-                return call_user_func($evaluate, $_1) / call_user_func($evaluate, $_2);
+            } elseif ($op == 'SUMM') {
+                $result=0;
+                foreach($_2 as $x){
+                    $result+=call_user_func($evaluate, $x);
+                }
+                return $result;
             } else {
                 $r->error('unknown operation ' . $op);
             }
@@ -146,6 +154,10 @@ foreach ([
              '3.4E+2',
              '00.3.4',
              '00.334564',
+             'pow(2,3)',
+             'pow(2,3,4)',
+             'pow(2)',
+             'summ(1,2,4,5,6,7,,8,4.5,6)',
          ] as $k => $v) {
     echo "\n" . json_encode($r->ev($v, false));
     try {
