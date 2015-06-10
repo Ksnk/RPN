@@ -12,7 +12,7 @@ class revpolnot_class
 
     const
         THROW_EXCEPTION_ONERROR = 1,
-        STOP_ONERROR = 2,
+        STOP_ONERROR = 2, // todo: флаг пока не работает. А надо ли?
         SHOW_ERROR = 4,
         SHOW_DEBUG = 8;
 
@@ -146,7 +146,7 @@ class revpolnot_class
             }
         }
         if (empty($this->tagreg))
-            $reg .= '\b(\d+))#i'; // ставим только числа. Вот!
+            $reg .= '\b\d+)#i'; // ставим только числа. Вот!
         else
             $reg .= $this->tagreg . ')#i';
         $this->log('reg:' . $reg);
@@ -188,6 +188,20 @@ class revpolnot_class
         }
     }
 
+    private function getnext(&$code){
+        $tag=false;
+        if(preg_match($this->sintaxreg, $code, $m, PREG_OFFSET_CAPTURE, $this->start)) {
+            //$this->log('found:'.json_encode($m[0]).$this->start);
+            if ($this->start != $m[0][1]) {
+                $this->log('error:' . json_encode($m[0]) . $this->start );
+                $this->error(sprintf('[%d:%d] ', $this->start, $m[0][1] - $this->start));
+            }
+            $tag = $m[1][0];
+            $this->start = $m[0][1] + strlen($m[0][0]);
+        }
+        return $tag;
+    }
+
     /**
      * транслируем в обратную польскую форму
      * @param $code
@@ -197,21 +211,15 @@ class revpolnot_class
     {
         $op = array(array('op' => '('));
         $place_operand = true;
-        while (preg_match($this->sintaxreg, $code, $m, PREG_OFFSET_CAPTURE, $this->start)) {
-            //$this->log('found:'.json_encode($m[0]).$this->start);
-            if ($this->start != $m[0][1]) {
-                $this->log('error:' . json_encode($m[0]) . $this->start );
-                $this->error(sprintf('[%d:%d] ', $this->start, $m[0][1] - $this->start));
-            }
-            $tag = $m[1][0];
-            $this->start = $m[0][1] + strlen($m[0][0]);
+        while ($tag=$this->getnext($code)){
             switch ($tag) {
                 case '(':
                     if (!$place_operand) {
                         $this->pushop('_EMPTY_', $op);
                     }
                     $this->pushop('(', $op);
-                    $this->LtoP($code);
+                    if($this->LtoP($code)!=')')
+                        $this->error('unclosed  parenthesis_0');
                     $this->pushop(')', $op);
                     $place_operand = false;
                     break;
@@ -221,7 +229,19 @@ class revpolnot_class
                     $this->pushop(',', $op);
                     break 2;
                 default:
-                    if (isset($this->unop[$tag]) && $place_operand) {
+                    if (isset($this->reserved_words[$tag]) && $place_operand) {
+                        // будет вызов
+                        if('('==$this->getnext($code)){
+                            $parcount=1;
+                            while(','==($x=$this->LtoP($code))) $parcount++;
+                            if($x!=')')
+                                $this->error('unclosed parenthesis_1');
+                            if($this->reserved_words[$tag]>0 && $this->reserved_words[$tag]!=$parcount)
+                                $this->error('wrong parameters count');
+                        }
+                        $this->syntax_tree[] = array('call' => $tag,'parcount'=>$parcount);
+                        $place_operand = false;
+                    } else if (isset($this->unop[$tag]) && $place_operand) {
                         $this->pushop($tag, $op, true);
                     } else if (isset($this->suffix[$tag]) && !$place_operand) {
                         $this->syntax_tree[] = array('op' => $tag, 'unop' => true);
@@ -236,7 +256,7 @@ class revpolnot_class
                         if (!$place_operand) { // если операции нет - савим пустую операцию
                             $this->pushop('_EMPTY_', $op);
                         }
-                        $this->syntax_tree[] = array('data' => $m[2][0]);
+                        $this->syntax_tree[] = array('data' => $tag);
                         $place_operand = false;
                     }
             }
@@ -246,6 +266,7 @@ class revpolnot_class
         if (!empty($op)) { // финиш -- автоматическое закрытие скобок?
             $this->pushop(')', $op);
         }
+        return $tag;
     }
 
     /**
@@ -281,17 +302,25 @@ class revpolnot_class
         }
         // вычисляем
         $this->execute();
+        if(count($this->ex_stack)!=1)
+            $this->error('something gose wrong!');
         return call_user_func($this->evaluateTag, array_pop($this->ex_stack));
     }
 
     private function execute(){
         if(empty($this->evaluateTag) || empty($this->executeOp))
             return;
-        while(!empty($this->syntax_tree)){
+        while (!empty($this->syntax_tree)) {
             $r=array_shift($this->syntax_tree);
-            if (isset($r['data']))
+            if (isset($r['call'])) {
+                $param=array();
+                for($i=0;$i<$r['parcount'];$i++){
+                    $param[]=array_pop($this->ex_stack);
+                }
+                $this->ex_stack[] = call_user_func($this->executeOp, $r['call'], false, $param, $this->evaluateTag, true);
+            } elseif (isset($r['data'])) {
                 $this->ex_stack[] = $r;
-            else {
+            } else {
                 if (!empty($r['unop'])) {
                     // унарные операции
                     $this->ex_stack[] = call_user_func($this->executeOp, $r['op'], false, array_pop($this->ex_stack), $this->evaluateTag, true);

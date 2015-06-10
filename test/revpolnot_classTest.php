@@ -9,6 +9,7 @@
 class revpolnot_classTest extends PHPUnit_Framework_TestCase
 {
 
+    /** @var revpolnot_class  */
     var $current_rpn = null;
 
     /**
@@ -124,6 +125,79 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
         return $result;
     }
 
+    /**
+     * проверка числового калькулятора
+     */
+    function testNumberCalculation()
+    {
+        $r = new revpolnot_class();
+        $this->current_rpn = $r;
+        $r->option(array(
+            // 'flags' => 12,
+            'operation' => ['+' => 4, '-' => 4, '*' => 5, '/' => 5,],
+            'suffix' => ['++' => 1],
+            'unop' => ['-' => 1],
+            'tagreg' => '\b(\d+)\b',
+
+            'evaluateTag' => [$this, '_calcTag'],
+            'executeOp' => [$this, '_calcOp'],
+        ));
+        foreach ([
+                     '1' => 1,
+                     '-1' => -1,
+                     '(-3*-----4)*4++/5' => 12,
+                     '1+2+3+4+5' => 15,
+                 ] as $k => $v) {
+            $result = $r->ev($k);
+            $this->assertEquals('[]', json_encode($r->error()));
+            $this->assertEquals($k . "\n" . json_encode($v), $k . "\n" . json_encode($result));
+        }
+    }
+
+    /**
+     * проверка числового калькулятора
+     *
+     * repeat:10 times; peak:2624B, calc:616B, final:360B, 0.006725 sec spent (2015-06-09 14:25:15)
+     * repeat:1000 times; peak:12528B, calc:616B, final:360B, 0.607545 sec spent (2015-06-09 14:25:35)
+     * repeat:2000 times; peak:22528B, calc:616B, final:360B, 1.248044 sec spent (2015-06-09 14:25:53)
+     * repeat:4000 times; peak:42528B, calc:616B, final:360B, 2.366961 sec spent (2015-06-09 14:26:10)
+     * repeat:6000 times; peak:62528B, calc:616B, final:360B, 3.522547 sec spent (2015-06-09 14:26:27)
+     *
+     */
+    function testTrulyLongCalculation()
+    {
+        $mem0=memory_get_usage();
+        $start_time0=microtime(true);
+        $this->current_rpn = new revpolnot_class();
+        $this->current_rpn->option(array(
+            // 'flags' => 12,
+            'operation' => ['+' => 4, '-' => 4, '*' => 5, '/' => 5,],
+            'suffix' => ['++' => 1],
+            'unop' => ['-' => 1],
+            'tagreg' => '\b(\d+)\b',
+
+            'evaluateTag' => [$this, '_calcTag'],
+            'executeOp' => [$this, '_calcOp'],
+        ));
+
+        $repeat=6000;
+        $code=str_repeat('(1+2-4*1)+',$repeat).'0'; // -1 repeated $repeat times about 10*$repeat+1 bytes
+        $before_calc=memory_get_usage();
+        $result = $this->current_rpn->ev($code);
+        $peak_mem=memory_get_usage();
+        $this->assertEquals('[]', json_encode($this->current_rpn->error()));
+        $this->assertEquals(  json_encode(-$repeat),   json_encode($result));
+        unset($this->current_rpn,$code,$result);
+        printf("repeat:%d times; peak:%dB, calc:%dB, final:%dB, %f sec spent (%s)\n",
+            $repeat,
+            $peak_mem-$mem0,
+            $peak_mem-$before_calc,
+            memory_get_usage()-$mem0,
+
+            microtime(true)-$start_time0,
+            date("Y-m-d H:i:s"));
+    }
+
     function _calcTag($op)
     {
         $this->current_rpn->log('eval:' . json_encode($op));
@@ -156,62 +230,5 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
         return 0;
     }
 
-    /**
-     * проверка числового калькулятора
-     */
-    function testNumberCalculation()
-    {
-        $r = new revpolnot_class();
-        $this->current_rpn = $r;
-        $r->option(array(
-            // 'flags' => 12,
-            'operation' => ['+' => 4, '-' => 4, '*' => 5, '/' => 5,],
-            'suffix' => ['++' => 1],
-            'unop' => ['-' => 1],
-            'tagreg' => '\b(\d+)\b',
-
-            'evaluateTag' => [$this, '_calcTag'],
-            'executeOp' => [$this, '_calcOp'],
-        ));
-        foreach ([
-                     '1' => 1,
-                     '-1' => -1,
-                     '(-3*-----4)*4++/5' => 12,
-                     '1+2+3+4+5' => 15,
-                 ] as $k => $v) {
-            $result = $r->ev($k);
-            $this->assertEquals('[]', json_encode($r->error()));
-            $this->assertEquals($k . "\n" . json_encode($v), $k . "\n" . json_encode($result));
-        }
-    }
-
-    /**
-     * проверка числового калькулятора
-     */
-    function testTrullyLongCalculation()
-    {
-        $this->current_rpn = new revpolnot_class();
-        $this->current_rpn->option(array(
-            // 'flags' => 12,
-            'operation' => ['+' => 4, '-' => 4, '*' => 5, '/' => 5,],
-            'suffix' => ['++' => 1],
-            'unop' => ['-' => 1],
-            'tagreg' => '\b(\d+)\b',
-
-            'evaluateTag' => [$this, '_calcTag'],
-            'executeOp' => [$this, '_calcOp'],
-        ));
-
-        $code=str_repeat('(1+2-4*1)+',4000).'0'; // -1 repeated 4000 times about 40001 bytes
-        $mem=memory_get_usage();
-        $start_time=microtime(true);
-        $result = $this->current_rpn->ev($code);
-        printf("additional memory - %d, %f sec spent (%s)\n",
-            memory_get_usage()-$mem,
-            microtime(true)-$start_time,
-            date("Y-m-d H:i:s"));
-        $this->assertEquals('[]', json_encode($this->current_rpn->error()));
-        $this->assertEquals(  json_encode(-4000),   json_encode($result));
-    }
 }
  

@@ -27,7 +27,7 @@ class revpolnot_WrongDataTest extends PHPUnit_Framework_TestCase
                      'Hello world!' =>['["[0:12] "]','[]'],
                      '1 andx 2 notand 3 or 4 not to be!'=>['["[1:5] ","[8:7] ","[26:7] "]','[{"data":"1"},{"data":"2"},{"op":"_EMPTY_"},{"data":"3"},{"op":"_EMPTY_"},{"data":"4"},{"op":"OR"},{"op":"NOT"}]'],
             '((172* 501*))))))))) not 128'=>['["[14:14] "]','[{"data":"172"},{"op":"*","unop":true},{"data":"501"},{"op":"*","unop":true},{"op":"_EMPTY_"}]'],
-                     '((((((((172* 501*))) not 128'=>['[]','[{"data":"172"},{"op":"*","unop":true},{"data":"501"},{"op":"*","unop":true},{"op":"_EMPTY_"},{"data":"128"},{"op":"NOT"}]'],
+                     '((((((((172* 501*))) not 128'=>['["unclosed  parenthesis_0","unclosed  parenthesis_0","unclosed  parenthesis_0","unclosed  parenthesis_0","unclosed  parenthesis_0"]','[{"data":"172"},{"op":"*","unop":true},{"data":"501"},{"op":"*","unop":true},{"op":"_EMPTY_"},{"data":"128"},{"op":"NOT"}]'],
                  ] as $k => $v) {
             $result=$r->ev($k,false);
             $this->assertEquals($v[0], json_encode($r->error()));
@@ -53,7 +53,7 @@ class revpolnot_WrongDataTest extends PHPUnit_Framework_TestCase
                      'Hello world!' =>['"[0:12] "','null'],
                      '1 andx 2 notand 3 or 4 not to be!'=>['"[1:5] "','null'],
                      '((172* 501*))))))))) not 128'=>['"[14:14] "','null'],
-                     '((((((((172* 501*))) not 128'=>['""','[{"data":"172"},{"op":"*","unop":true},{"data":"501"},{"op":"*","unop":true},{"op":"_EMPTY_"},{"data":"128"},{"op":"NOT"}]'],
+                     '((((((((172* 501*))) not 128'=>['"unclosed  parenthesis_0"','null'],
                  ] as $k => $v) {
             $mess='';
             try{
