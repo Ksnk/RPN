@@ -32,16 +32,16 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
         ));
         foreach ([
                      '(172* ) OR not(501* OR 128) AND NOT 201*' =>
-                         '[{"data":"172"},{"op":"*","unop":true},{"data":"501"},{"op":"*","unop":true},{"data":"128"},{"op":"OR"},{"op":"NOT","unop":true},{"op":"OR"},{"data":"201"},{"op":"*","unop":true},{"op":"NOT","unop":true},{"op":"AND"}]',
-                     '128 (501* not 503*)' => '[{"data":"128"},{"data":"501"},{"op":"*","unop":true},{"data":"503"},{"op":"*","unop":true},{"op":"NOT"},{"op":"_EMPTY_"}]',
-                     '172* or 501* and not 128' => '[{"data":"172"},{"op":"*","unop":true},{"data":"501"},{"op":"*","unop":true},{"op":"OR"},{"data":"128"},{"op":"NOT","unop":true},{"op":"AND"}]',
-                     '172* 501* not 128' => '[{"data":"172"},{"op":"*","unop":true},{"data":"501"},{"op":"*","unop":true},{"op":"_EMPTY_"},{"data":"128"},{"op":"NOT"}]',
-                     '(((((((((172* 501*))))))))) not 128' => '[{"data":"172"},{"op":"*","unop":true},{"data":"501"},{"op":"*","unop":true},{"op":"_EMPTY_"},{"data":"128"},{"op":"NOT"}]',
-                     '((172* 501*)and(173* 234*) or(4567* 345*) not 345) not 128' => '[{"data":"172"},{"op":"*","unop":true},{"data":"501"},{"op":"*","unop":true},{"op":"_EMPTY_"},{"data":"173"},{"op":"*","unop":true},{"data":"234"},{"op":"*","unop":true},{"op":"_EMPTY_"},{"op":"AND"},{"data":"4567"},{"op":"*","unop":true},{"data":"345"},{"op":"*","unop":true},{"op":"_EMPTY_"},{"op":"OR"},{"data":"345"},{"op":"NOT"},{"data":"128"},{"op":"NOT"}]',
-                     '((((((172* 501*)and 173*) 234*) or 4567*) 345*) not 345) not 128' => '[{"data":"172"},{"op":"*","unop":true},{"data":"501"},{"op":"*","unop":true},{"op":"_EMPTY_"},{"data":"173"},{"op":"*","unop":true},{"op":"AND"},{"data":"234"},{"op":"*","unop":true},{"op":"_EMPTY_"},{"data":"4567"},{"op":"*","unop":true},{"op":"OR"},{"data":"345"},{"op":"*","unop":true},{"op":"_EMPTY_"},{"data":"345"},{"op":"NOT"},{"data":"128"},{"op":"NOT"}]',
-                     '(172* (501* and (173* (234* or (4567* (345* and (345 not 128)))))))' => '[{"data":"172"},{"op":"*","unop":true},{"data":"501"},{"op":"*","unop":true},{"data":"173"},{"op":"*","unop":true},{"data":"234"},{"op":"*","unop":true},{"data":"4567"},{"op":"*","unop":true},{"data":"345"},{"op":"*","unop":true},{"data":"345"},{"data":"128"},{"op":"NOT"},{"op":"AND"},{"op":"_EMPTY_"},{"op":"OR"},{"op":"_EMPTY_"},{"op":"AND"},{"op":"_EMPTY_"}]',
+                         '[{"data":"172"},{"op":"*","unop":2},{"data":"501"},{"op":"*","unop":2},{"data":"128"},{"op":"OR"},{"op":"NOT","unop":1},{"op":"OR"},{"data":"201"},{"op":"*","unop":2},{"op":"NOT","unop":1},{"op":"AND"}]',
+                     '128 (501* not 503*)' => '[{"data":"128"},{"data":"501"},{"op":"*","unop":2},{"data":"503"},{"op":"*","unop":2},{"op":"NOT"},{"op":"_EMPTY_"}]',
+                     '172* or 501* and not 128' => '[{"data":"172"},{"op":"*","unop":2},{"data":"501"},{"op":"*","unop":2},{"op":"OR"},{"data":"128"},{"op":"NOT","unop":1},{"op":"AND"}]',
+                     '172* 501* not 128' => '[{"data":"172"},{"op":"*","unop":2},{"data":"501"},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"128"},{"op":"NOT"}]',
+                     '(((((((((172* 501*))))))))) not 128' => '[{"data":"172"},{"op":"*","unop":2},{"data":"501"},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"128"},{"op":"NOT"}]',
+                     '((172* 501*)and(173* 234*) or(4567* 345*) not 345) not 128' => '[{"data":"172"},{"op":"*","unop":2},{"data":"501"},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"173"},{"op":"*","unop":2},{"data":"234"},{"op":"*","unop":2},{"op":"_EMPTY_"},{"op":"AND"},{"data":"4567"},{"op":"*","unop":2},{"data":"345"},{"op":"*","unop":2},{"op":"_EMPTY_"},{"op":"OR"},{"data":"345"},{"op":"NOT"},{"data":"128"},{"op":"NOT"}]',
+                     '((((((172* 501*)and 173*) 234*) or 4567*) 345*) not 345) not 128' => '[{"data":"172"},{"op":"*","unop":2},{"data":"501"},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"173"},{"op":"*","unop":2},{"op":"AND"},{"data":"234"},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"4567"},{"op":"*","unop":2},{"op":"OR"},{"data":"345"},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"345"},{"op":"NOT"},{"data":"128"},{"op":"NOT"}]',
+                     '(172* (501* and (173* (234* or (4567* (345* and (345 not 128)))))))' => '[{"data":"172"},{"op":"*","unop":2},{"data":"501"},{"op":"*","unop":2},{"data":"173"},{"op":"*","unop":2},{"data":"234"},{"op":"*","unop":2},{"data":"4567"},{"op":"*","unop":2},{"data":"345"},{"op":"*","unop":2},{"data":"345"},{"data":"128"},{"op":"NOT"},{"op":"AND"},{"op":"_EMPTY_"},{"op":"OR"},{"op":"_EMPTY_"},{"op":"AND"},{"op":"_EMPTY_"}]',
                  ] as $k => $v) {
-            $this->assertEquals('[]', json_encode($r->error()));
+            $this->assertEquals($k . "\n" .'[]', $k . "\n" .json_encode($r->error()));
             $this->assertEquals($k . "\n" . $v, $k . "\n" . json_encode($r->ev($k, false)));
         }
     }
@@ -152,14 +152,15 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
             'executeOp' => [$this, '_calcOp'],
         ));
         foreach ([
+                     'e+summ(1,2,1,2,1,2,1,2)-pow(3,4)+floor(56/3)'=>-48.2817181715,
                      '1' => 1,
                      '-1' => -1,
                      '(-3*-----4)*4++/5' => 12,
                      '1+2+3+4+5' => 15,
-                    'e+summ(1,2,1,2,1,2,1,2)-pow(3,4)+floor(56/3)'=>-48.2817181715,
+                     //               'e+summ(1,2,1,2,1,2,1,2)-pow(3,4)+floor(56/3)'=>-48.2817181715,
                  ] as $k => $v) {
             $result = $r->ev($k);
-            $this->assertEquals('[]', json_encode($r->error()));
+            $this->assertEquals($k . "\n" .'[]', $k . "\n" .json_encode($r->error()));
             $this->assertEquals($k . "\n" . json_encode($v), $k . "\n" . json_encode($result));
         }
     }

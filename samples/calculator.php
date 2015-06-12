@@ -139,7 +139,9 @@ $r->option(array(
 
 foreach ([
              //  '(-3*-----4)*4++/5',
-             '-1',
+/*
+
+              '-1',
              '+1+1-1',
              '-sqrt(sqr(2)+12)',
              'sin(0)',
@@ -157,9 +159,10 @@ foreach ([
              'pow(2,3)',
              'pow(2,3,4)',
              'pow(2)',
-             'summ(1,2,4,5,6,7,,8,4.5,6)',
+             'summ(1,2,4,5,6,7,,8,4.5,6)', //43.5,
+ /**/            'summ(1,2,4,5,6*4^5,7,8,4.5,6)', //43.5,
          ] as $k => $v) {
-    echo "\n" . json_encode($r->ev($v, false));
+  //  echo "\n" . json_encode($r->ev($v, false));
     try {
         $result = $r->ev($v); //var_dump($result);
         if (is_nan($result))

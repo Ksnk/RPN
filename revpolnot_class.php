@@ -185,7 +185,7 @@ class revpolnot_class
         if ($op != ')') {
             $data = array('op' => $op, 'prio' => $prio);
             if ($unop) {
-                $data['unop'] = true;
+                $data['unop'] = 1;
             }
             $opstack[] = $data;
         }
@@ -239,8 +239,19 @@ class revpolnot_class
                         $_xR=$this->reserved_words[$tag];
                         if ($_xR != 0) {
                             if ('(' == $this->getnext($code)) {
-                                $parcount = 1;
-                                while (',' == ($x = $this->LtoP($code))) $parcount++;
+                                $parcount = 1;$last=count($this->syntax_tree);
+                                while (',' == ($x = $this->LtoP($code))) {
+                                   /*  //todo: repair
+                                   if($this->canexecute) {
+                                        $this->execute();
+                                        if($parcount + $last!=count($this->syntax_tree)){
+                                            $this->error('something wrong with parameters');
+                                        } else {
+                                            $parcount++;
+                                        }
+                                    } else*/
+                                        $parcount++;
+                                }
                                 if ($x != ')')
                                     $this->error('unclosed parenthesis_1');
                                 if ($_xR > 0 && $_xR != $parcount)
@@ -252,7 +263,7 @@ class revpolnot_class
                     } else if (($_xU= isset($this->unop[$tag])) && $place_operand) {
                         $this->pushop($tag, $op, true);
                     } else if (($_xS=isset($this->suffix[$tag])) && !$place_operand) {
-                        $this->syntax_tree[] = array('op' => $tag, 'unop' => true);
+                        $this->syntax_tree[] = array('op' => $tag, 'unop' => 2);
                     } else if (($_xO=isset($this->operation[$tag])) && !$place_operand) {
                         $this->pushop($tag, $op);
                         $place_operand = true;
@@ -335,7 +346,7 @@ class revpolnot_class
             } else {
                 if (!empty($r['unop'])) {
                     // унарные операции
-                    $this->ex_stack[] = call_user_func($this->executeOp, $r['op'], false, array_pop($this->ex_stack), $this->evaluateTag, true);
+                    $this->ex_stack[] = call_user_func($this->executeOp, $r['op'], false, array_pop($this->ex_stack), $this->evaluateTag, $r['unop']);
                 } else { // бинарные операции
                     $_2 = array_pop($this->ex_stack);
                     $this->ex_stack[] = call_user_func($this->executeOp, $r['op'], array_pop($this->ex_stack), $_2, $this->evaluateTag);
