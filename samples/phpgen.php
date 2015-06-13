@@ -19,14 +19,16 @@ return $parser ->newOp2('- +',3)
 require '../test/autoloader.php';
 
 // create php-string and create_function with it.
-$r = new revpolnot_class();
+$r = new rpn_class();
 
 set_error_handler(function ($c, $m /*, $f, $l*/) {
     throw new Exception($m, $c);
 }, E_ALL & ~E_NOTICE);
 
 $r->option(array(
-    //  'flags'=>0,
+    'flags'=>0//rpn_class::SHOW_DEBUG+rpn_class::SHOW_ERROR
+            +rpn_class::ALLOW_STRINGS
+,
     'operation' => ['+' => 4, '-' => 4, '*' => 5, '/' => 5, '^' => 7, '||' => 2, '&&' => 2, '>>' => 3, '<<' => 3],
     'suffix' => ['++' => 1],
     'unop' => ['++'=>1,'-' => 1, '+' => 1],
@@ -44,10 +46,12 @@ $r->option(array(
      * идеология выполнения -
      */
     'evaluateTag' => function ($op) use ($r) {
-            if (isset($op['type']) && $op['type'] == 'XOPERATION') {
+            if (isset($op['type']) && $op['type'] == rpn_class::TYPE_STRING) {
+                $result = ''.$op['data'];
+            } elseif (isset($op['type']) && $op['type'] == rpn_class::TYPE_XSTRING) {
                 $result = $op['data'];
             } else {
-                $result = $op['data'];
+                $result = 0+$op['data'];
             }
             $r->log('eval:' . json_encode($op));
             return $result;
@@ -55,7 +59,11 @@ $r->option(array(
     'executeOp' => function ($op, $_1, $_2, $evaluate, $unop = false) use ($r) {
             $r->log('oper:' . json_encode($_1) . ' ' . $op . ' ' . json_encode($_2));
 
-            if (!$unop && in_array($op, ['+', '-', '*', '/', '||', '&&', '>>', '<<'])) {
+            if (!$unop && $op=='+' && isset($_1['type']) && $_1['type']==rpn_class::TYPE_STRING) {
+                return ['data' => sprintf("('%s' . '%s')", str_replace("'",'\\\'',call_user_func($evaluate, $_1)), str_replace("'",'\\\'',call_user_func($evaluate, $_2))), 'type' => rpn_class::TYPE_XSTRING];
+            } elseif (!$unop && in_array($op, ['+', '-', '*', '/', '||', '&&', '>>', '<<'])) {
+
+
                 return ['data' => sprintf('(%s %s %s)', call_user_func($evaluate, $_1), $op, call_user_func($evaluate, $_2)), 'type' => 'XOPERATION'];
             } elseif (!$unop && $op == '^') {
                 return ['data' => sprintf('pow(%s,%s)', call_user_func($evaluate, $_1), call_user_func($evaluate, $_2)), 'type' => 'XOPERATION'];
@@ -94,7 +102,7 @@ $x = 1;
 
 foreach ([  //*
              '1' => ['result' =>1],
-             '1+1' => ['result' =>2],
+           /*  '1+1' => ['result' =>2],
              '1+1*2' => ['result' =>3],
              '1*1+2' => ['result' =>3],
              '1*1+2^2' => ['result' =>5],
@@ -111,9 +119,10 @@ foreach ([  //*
              '1+-----1' => ['result' => 1 + -(-(-(-(-1))))],
              '1+ - - - - - -1' => ['result' => 1 + - - - - - -1],
              '((((((((((((((((((((1))))))))))))))))))))+1' => ['result' => 2],
-             '1+2+3' => ['result' => 1 + 2 + 3],/**/
+             '1+2+3' => ['result' => 1 + 2 + 3],
              'x++ + ++x' => ['x'=>4,'result' => 10],
-             '++x*x++' => ['x'=>4,'result' => 25],
+             '++x*x++' => ['x'=>4,'result' => 25],/**/
+             '"Hello world!"+" Yess"' => ['x'=>4,'result' => "Hello world! Yess"],
              /**/
          ] as $k => $v) {
     try {

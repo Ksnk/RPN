@@ -39,9 +39,9 @@ $parents=array_unique($parents);
 /**
  * пример выяснения в той ли группе находится товар
  */
-$r=new \revpolnot_class();
+$r=new \rpn_class();
 $r->option([
-    'flags'=>revpolnot_class::EMPTY_FUNCTION_ALLOWED
+    'flags'=>rpn_class::EMPTY_FUNCTION_ALLOWED
     //      | 12
     ,
     'operation' =>  ['AND'=>3,'OR'=>3,'NOT'=>3],

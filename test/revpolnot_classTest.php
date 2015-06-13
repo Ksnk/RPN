@@ -8,10 +8,10 @@
  *
  * @method assertEquals - злой phpstorm не видит моего PHPUnit и обижаеццо
  */
-class revpolnot_classTest extends PHPUnit_Framework_TestCase
+class rpn_classTest extends PHPUnit_Framework_TestCase
 {
 
-    /** @var revpolnot_class  */
+    /** @var rpn_class  */
     var $current_rpn = null;
 
     /**
@@ -20,9 +20,9 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
      */
     function testBuildingSyntaxTree()
     {
-        $r = new revpolnot_class();
+        $r = new rpn_class();
         $r->option(array(
-            'flags' => revpolnot_class::EMPTY_FUNCTION_ALLOWED
+            'flags' => rpn_class::EMPTY_FUNCTION_ALLOWED
             //      | 12
         ,
             'operation' => ['AND' => 3, 'OR' => 3, 'NOT' => 3],
@@ -32,14 +32,14 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
         ));
         foreach ([
                      '(172* ) OR not(501* OR 128) AND NOT 201*' =>
-                         '[{"data":"172"},{"op":"*","unop":2},{"data":"501"},{"op":"*","unop":2},{"data":"128"},{"op":"OR"},{"op":"NOT","unop":1},{"op":"OR"},{"data":"201"},{"op":"*","unop":2},{"op":"NOT","unop":1},{"op":"AND"}]',
-                     '128 (501* not 503*)' => '[{"data":"128"},{"data":"501"},{"op":"*","unop":2},{"data":"503"},{"op":"*","unop":2},{"op":"NOT"},{"op":"_EMPTY_"}]',
-                     '172* or 501* and not 128' => '[{"data":"172"},{"op":"*","unop":2},{"data":"501"},{"op":"*","unop":2},{"op":"OR"},{"data":"128"},{"op":"NOT","unop":1},{"op":"AND"}]',
-                     '172* 501* not 128' => '[{"data":"172"},{"op":"*","unop":2},{"data":"501"},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"128"},{"op":"NOT"}]',
-                     '(((((((((172* 501*))))))))) not 128' => '[{"data":"172"},{"op":"*","unop":2},{"data":"501"},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"128"},{"op":"NOT"}]',
-                     '((172* 501*)and(173* 234*) or(4567* 345*) not 345) not 128' => '[{"data":"172"},{"op":"*","unop":2},{"data":"501"},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"173"},{"op":"*","unop":2},{"data":"234"},{"op":"*","unop":2},{"op":"_EMPTY_"},{"op":"AND"},{"data":"4567"},{"op":"*","unop":2},{"data":"345"},{"op":"*","unop":2},{"op":"_EMPTY_"},{"op":"OR"},{"data":"345"},{"op":"NOT"},{"data":"128"},{"op":"NOT"}]',
-                     '((((((172* 501*)and 173*) 234*) or 4567*) 345*) not 345) not 128' => '[{"data":"172"},{"op":"*","unop":2},{"data":"501"},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"173"},{"op":"*","unop":2},{"op":"AND"},{"data":"234"},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"4567"},{"op":"*","unop":2},{"op":"OR"},{"data":"345"},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"345"},{"op":"NOT"},{"data":"128"},{"op":"NOT"}]',
-                     '(172* (501* and (173* (234* or (4567* (345* and (345 not 128)))))))' => '[{"data":"172"},{"op":"*","unop":2},{"data":"501"},{"op":"*","unop":2},{"data":"173"},{"op":"*","unop":2},{"data":"234"},{"op":"*","unop":2},{"data":"4567"},{"op":"*","unop":2},{"data":"345"},{"op":"*","unop":2},{"data":"345"},{"data":"128"},{"op":"NOT"},{"op":"AND"},{"op":"_EMPTY_"},{"op":"OR"},{"op":"_EMPTY_"},{"op":"AND"},{"op":"_EMPTY_"}]',
+                         '[{"data":"172","type":12},{"op":"*","unop":2},{"data":"501","type":12},{"op":"*","unop":2},{"data":"128","type":12},{"op":"OR"},{"op":"NOT","unop":1},{"op":"OR"},{"data":"201","type":12},{"op":"*","unop":2},{"op":"NOT","unop":1},{"op":"AND"}]',
+                     '128 (501* not 503*)' => '[{"data":"128","type":12},{"data":"501","type":12},{"op":"*","unop":2},{"data":"503","type":12},{"op":"*","unop":2},{"op":"NOT"},{"op":"_EMPTY_"}]',
+                     '172* or 501* and not 128' => '[{"data":"172","type":12},{"op":"*","unop":2},{"data":"501","type":12},{"op":"*","unop":2},{"op":"OR"},{"data":"128","type":12},{"op":"NOT","unop":1},{"op":"AND"}]',
+                     '172* 501* not 128' => '[{"data":"172","type":12},{"op":"*","unop":2},{"data":"501","type":12},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"128","type":12},{"op":"NOT"}]',
+                     '(((((((((172* 501*))))))))) not 128' => '[{"data":"172","type":12},{"op":"*","unop":2},{"data":"501","type":12},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"128","type":12},{"op":"NOT"}]',
+                     '((172* 501*)and(173* 234*) or(4567* 345*) not 345) not 128' => '[{"data":"172","type":12},{"op":"*","unop":2},{"data":"501","type":12},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"173","type":12},{"op":"*","unop":2},{"data":"234","type":12},{"op":"*","unop":2},{"op":"_EMPTY_"},{"op":"AND"},{"data":"4567","type":12},{"op":"*","unop":2},{"data":"345","type":12},{"op":"*","unop":2},{"op":"_EMPTY_"},{"op":"OR"},{"data":"345","type":12},{"op":"NOT"},{"data":"128","type":12},{"op":"NOT"}]',
+                     '((((((172* 501*)and 173*) 234*) or 4567*) 345*) not 345) not 128' => '[{"data":"172","type":12},{"op":"*","unop":2},{"data":"501","type":12},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"173","type":12},{"op":"*","unop":2},{"op":"AND"},{"data":"234","type":12},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"4567","type":12},{"op":"*","unop":2},{"op":"OR"},{"data":"345","type":12},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"345","type":12},{"op":"NOT"},{"data":"128","type":12},{"op":"NOT"}]',
+                     '(172* (501* and (173* (234* or (4567* (345* and (345 not 128)))))))' => '[{"data":"172","type":12},{"op":"*","unop":2},{"data":"501","type":12},{"op":"*","unop":2},{"data":"173","type":12},{"op":"*","unop":2},{"data":"234","type":12},{"op":"*","unop":2},{"data":"4567","type":12},{"op":"*","unop":2},{"data":"345","type":12},{"op":"*","unop":2},{"data":"345","type":12},{"data":"128","type":12},{"op":"NOT"},{"op":"AND"},{"op":"_EMPTY_"},{"op":"OR"},{"op":"_EMPTY_"},{"op":"AND"},{"op":"_EMPTY_"}]',
                  ] as $k => $v) {
             $this->assertEquals($k . "\n" .'[]', $k . "\n" .json_encode($r->error()));
             $this->assertEquals($k . "\n" . $v, $k . "\n" . json_encode($r->ev($k, false)));
@@ -51,7 +51,7 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
      */
     function testClassCalculation()
     {
-        $r = new revpolnot_class();
+        $r = new rpn_class();
         $r->option(array(
             // 'flags' => 12,
             'operation' => ['AND' => 3, 'OR' => 3, 'NOT' => 3],
@@ -95,7 +95,7 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
         return $result;
     }
 
-    function _celOpr($op, $_1, $_2, $evaluate, $unop = false)
+    function _celOpr($op, $_1, $_2, $evaluate, $unop = 0)
     {
         $result = false;
         if ($op == '*') {
@@ -134,14 +134,14 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
      */
     function testNumberCalculation()
     {
-        $r = new revpolnot_class();
+        $r = new rpn_class();
         $this->current_rpn = $r;
         $r->option(array(
-            // 'flags' => 12,
+            //'flags' => 12,
             'operation' => ['+' => 4, '-' => 4, '*' => 5, '/' => 5,],
             'suffix' => ['++' => 1],
             'unop' => ['-' => 1],
-           // 'tagreg' => '\b(\d+)\b',
+            'tagreg' => '\b\d+\b',
             'reserved_words' => ['PI' => 0, 'E' => 0,
                 'FLOOR' => 1,
                 'POW' => 2,
@@ -153,11 +153,10 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
         ));
         foreach ([
                      'e+summ(1,2,1,2,1,2,1,2)-pow(3,4)+floor(56/3)'=>-48.2817181715,
+                     '1+2+3+4+5' => 15,
                      '1' => 1,
                      '-1' => -1,
                      '(-3*-----4)*4++/5' => 12,
-                     '1+2+3+4+5' => 15,
-                     //               'e+summ(1,2,1,2,1,2,1,2)-pow(3,4)+floor(56/3)'=>-48.2817181715,
                  ] as $k => $v) {
             $result = $r->ev($k);
             $this->assertEquals($k . "\n" .'[]', $k . "\n" .json_encode($r->error()));
@@ -175,13 +174,14 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
      * repeat:6000 times; peak:62528B, calc:616B, final:360B, 3.522547 sec spent (2015-06-09 14:26:27)
      * repeat:6000 times; peak:62416B, calc:504B, final:328B, 4.055349 sec spent (2015-06-10 21:53:31)
      * repeat:6000 times; peak:62448B, calc:536B, final:328B, 4.000997 sec spent (2015-06-11 00:13:14)
+     * repeat:6000 times; peak:62448B, calc:536B, final:328B, 4.017533 sec spent (2015-06-13 10:21:18)
      *
      */
     function testTrulyLongCalculation()
     {
         $mem0=memory_get_usage();
         $start_time0=microtime(true);
-        $this->current_rpn = new revpolnot_class();
+        $this->current_rpn = new rpn_class();
         $this->current_rpn->option(array(
             // 'flags' => 12,
             'operation' => ['+' => 4, '-' => 4, '*' => 5, '/' => 5,],
@@ -213,7 +213,7 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
 
     function _calcTag($op)
     {
-        $this->current_rpn->log('eval:' . json_encode($op));
+        //$this->current_rpn->log('eval:' . json_encode($op));
         if (!is_array($op) || !isset($op['data']))
             $result = $op;
         else {
@@ -224,7 +224,7 @@ class revpolnot_classTest extends PHPUnit_Framework_TestCase
 
     function _calcOp($op, $_1, $_2, $evaluate, $unop = false)
     {
-        $this->current_rpn->log('oper:' . json_encode($_1) . ' ' . $op . ' ' . json_encode($_2));
+        if (0 == ($this->current_rpn->flags & rpn_class::SHOW_DEBUG))$this->current_rpn->log('oper:' . json_encode($_1) . ' ' . $op . ' ' . json_encode($_2));
         if ($op == '+') {
             return call_user_func($evaluate, $_1) + call_user_func($evaluate, $_2);
         } else if ($op == '++') {

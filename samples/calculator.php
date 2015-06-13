@@ -8,18 +8,19 @@
 require '../test/autoloader.php';
 
 // just a simple number calculator
-$r = new revpolnot_class();
+$r = new rpn_class();
 
 set_error_handler(function ($c, $m /*, $f, $l*/) {
     throw new Exception($m, $c);
 }, E_ALL & ~E_NOTICE);
 
 $r->option(array(
-  //  'flags'=>0,
+    'flags'=>0
+        +rpn_class::ALLOW_REAL
+,
     'operation' => ['+' => 4, '-' => 4, '*' => 5, '/' => 5, '^' => 7,],
     'suffix' => ['%' => 1],
     'unop' => ['-' => 1, '+' => 1],
-    'tagreg' => '\b(?:\d\w*(?:\.[\d]+)?(?:E[\+\-][\d]+)?)',
     'reserved_words' => ['PI' => 0, 'E' => 0,
         'ABSOLUTE' => 1,
         'ARCCOS' => 1,
@@ -139,7 +140,7 @@ $r->option(array(
 
 foreach ([
              //  '(-3*-----4)*4++/5',
-/*
+//*
 
               '-1',
              '+1+1-1',

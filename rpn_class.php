@@ -7,17 +7,42 @@
  *
  * И никакой статики, Карл...
  */
-class revpolnot_class
+class rpn_class
 {
 
     const
+        TYPE_OPERAND = 1
+    , TYPE_XBOOLEAN = 2
+    , TYPE_NONE = 3
+    , TYPE_XDIGIT = 4
+    , TYPE_XSTRING = 5
+    , TYPE_XID = 6
+    , TYPE_XLIST = 7
+    , TYPE_OBJECT = 8
+    , TYPE_STRING = 9
+    , TYPE_DIGIT = 10
+    , TYPE_OPERATION = 11
+    , TYPE_ID = 12
+    , TYPE_COMMA = 13
+    , TYPE_EOF = 14
+    , TYPE_STRING1 = 15
+    , TYPE_STRING2 = 16
+    , TYPE_LIST = 17
+    , TYPE_SLICE = 18;
+
+    const
         THROW_EXCEPTION_ONERROR = 1,
-       // STOP_ONERROR = 2, // не пригодился
+        // STOP_ONERROR = 2, // не пригодился
         SHOW_ERROR = 4,
         SHOW_DEBUG = 8,
-        EMPTY_FUNCTION_ALLOWED = 16;
+        EMPTY_FUNCTION_ALLOWED = 16,
 
-    protected $flags = 0; // 1 exception, 2-stop on error, 4-error, 8-debug
+        ALLOW_STRINGS = 32, // допускаются операнды  - строки
+        ALLOW_REAL = 64, // допускаются операнды - вещественные числа.
+        ALLOW_ID = 128, // допускаются операнды - неописанные идентификаторы
+        ALLOW_COMMA = 256; // допускаются неописанные знаки препинания (,;)
+
+    var $flags = 0; // 1 exception, 2-stop on error, 4-error, 8-debug
     /**
      * массив операций, суффиксов и унарных. По нему будем строить регулярку
      */
@@ -28,7 +53,7 @@ class revpolnot_class
     /**
      * массив зарезервированных слов. По нему будем строить регулярку
      * Зарезервированные слова используются в качестве предопределенных функций
-     *  'IF'=>0,'THEN'=>0 - стоп-слово
+     *  'PI'=>0,'NOW'=>0 - слово-функция
      *  'SIN'=>1 - функция с одним параметром
      *  'EXP'=>2 - функция с 2-мя параметрами
      *  'ECHO'=>-1 - функция с неопределенным количеством параметров
@@ -54,12 +79,14 @@ class revpolnot_class
     private $errors = array();
     private $sintaxreg = '##i';
     private $tagreg = '';
-    private $canexecute=false;
+    private $canexecute = false;
 
     private $option_compiled = false;
 
     private $ex_stack = array();
     private $syntax_tree = array();
+    private $types = array();
+    private $type = 0;
 
     /**
      * вывод информации в лог отладки
@@ -106,9 +133,9 @@ class revpolnot_class
                 if ($key == 'operation') {
                     $this->$key = array_merge(
                         array( // злые люди обязательно забудут про скобочки
-                            ')' => -1,
+                            ')' => 0,
                             '(' => -1,
-                            ',' => 0,
+                            ',' => -1,
                         ),
                         $value
                     );
@@ -122,9 +149,8 @@ class revpolnot_class
 
     private function compile_options()
     {
+
         // строим регулярку по всем определенным параметрам
-        $reg = '#\s*(';
-        $simbols = array();
 
         $tags = array_unique(array_merge(
                 array_keys($this->reserved_words),
@@ -134,25 +160,79 @@ class revpolnot_class
         );
         if (0 != (self::EMPTY_FUNCTION_ALLOWED & $this->flags))
             $this->operation['_EMPTY_'] = 3;
-        if (!empty($tags))
+        $cake = array(
+            'WORD_OP' => array(), // словные операции
+            'MWORD_OP' => array(), // многословные операции
+            'JUST_OP' => array(), // символьные многобуквеные операции
+            'SYMBOL'=>'', // однобуквенные операции
+        );
+        if (!empty($tags)) {
             foreach ($tags as $v) {
                 if (preg_match('/^\w+$/', $v))
-                    $reg .= '\b' . preg_quote($v) . '\b|';
+                    $cake['WORD_OP'][] = $v;
+                else if (preg_match('/^[\s\w]+$/', $v))
+                    $cake['MC_JUST_OP'][] = $v;
+                else if (strlen($v)>=1)
+                    $cake['JUST_OP'][] = $v;
                 else
-                    $simbols[] = $v;
-            }
-        if (!empty($simbols)) {
-            $simbols = array_reverse($simbols); // это чтобы длинные операции `++` не разбивались на короткие `+`
-            foreach ($simbols as $v) {
-                $reg .= preg_quote($v) . '|';
+                    $cake['SYMBOL'] .= $v;
             }
         }
-        if (empty($this->tagreg))
-            $reg .= '\b\d+)#i'; // ставим только числа. Вот!
-        else
-            $reg .= $this->tagreg . ')#i';
-        $this->log('reg:' . $reg);
-        $this->sintaxreg = $reg;
+        $reg = array();
+        $this->types = array(0);
+        // вставляем в регулярку строки
+        if (0 != ($this->flags & self::ALLOW_STRINGS)) {
+            $reg[] = '([\'`"])((?:[^\\1\\\\]|\\\\.)*?)\\1';
+            $this->types[] = 0;
+            $this->types[] = self::TYPE_STRING;
+        }
+        $xreg = array();
+        if (!empty($cake['MWORD_OP'])) {
+            foreach ($cake['MWORD_OP'] as $v) {
+                $xreg [] = '\b' . preg_replace('/\s+/', '\s+', preg_quote($v)) . '\b';
+            }
+        }
+        if (!empty($cake['WORD_OP'])) {
+            foreach ($cake['WORD_OP'] as $v) {
+                $xreg[] = '\b' . preg_quote($v) . '\b';
+            }
+        }
+        if (!empty($cake['JUST_OP'])) {
+            $cake['JUST_OP'] = array_reverse($cake['JUST_OP']); // это чтобы длинные операции `++` не разбивались на короткие `+`
+            foreach ($cake['JUST_OP'] as $v) {
+                $xreg[] = preg_quote($v);
+            }
+        }
+        if (!empty($cake['SYMBOL']) && 0 == ($this->flags & self::ALLOW_COMMA)) {
+            $xreg[]='['.preg_quote($cake['SYMBOL']).']';
+        }
+
+        // вставляем в регулярку операции и зарезервированные слова
+        $reg[] = '(' . implode('|', $xreg) . ')';
+        $this->types[] = self::TYPE_OPERATION;
+
+        // вставляем в регулярку вещественные
+        if (0 != ($this->flags & self::ALLOW_REAL)) {
+            $reg[] = '\b(\d\w*(?:\.[\d]+)?(?:E[\+\-][\d]+)?)';
+            $this->types[] = self::TYPE_DIGIT;
+        }
+
+        // вставляем в регулярку идентификаторы
+        if (0 != ($this->flags & self::ALLOW_ID)) {
+            $reg [] = '\b([a-z][\w_]*)';
+            $this->types[] = self::TYPE_ID;
+        } else if (!empty($this->tagreg)) { // вставляем в регулярку операнды
+            $reg[] = '(' . $this->tagreg . ')';
+            $this->types[] = self::TYPE_ID;
+        }
+
+        if (0 != ($this->flags & self::ALLOW_COMMA)) {
+            $reg[] = '(.)'; #8 - однобуквенные знаки препинания - TYPE_COMMA
+            $this->types[] = self::TYPE_COMMA;
+        }
+
+        $this->sintaxreg = '#[\n\r\s]*(?:' . implode('|', $reg) . ')#si';
+        $this->log('reg:' . $this->sintaxreg);
         $this->option_compiled = true;
     }
 
@@ -176,7 +256,7 @@ class revpolnot_class
                     $data['unop'] = $past['unop'];
                 }
                 $this->syntax_tree[] = $data;
-                if($this->canexecute) $this->execute();
+                if ($this->canexecute) $this->execute();
             } else {
                 $opstack[] = $past;
                 break;
@@ -195,12 +275,26 @@ class revpolnot_class
     {
         $tag = false;
         if (preg_match($this->sintaxreg, $code, $m, PREG_OFFSET_CAPTURE, $this->start)) {
-            //$this->log('found:'.json_encode($m[0]).$this->start);
+            // $this->log('found:'.json_encode($m).$this->start);
             if ($this->start != $m[0][1]) {
                 $this->log('error:' . json_encode($m[0]) . $this->start);
                 $this->error(sprintf('[%d:%d] ', $this->start, $m[0][1] - $this->start));
             }
-            $tag = $m[1][0];
+            foreach ($this->types as $k => $v) {
+                if (0 != $v) {
+                    if ("" !== $m[$k][0]) {
+                        $this->type = $v;
+                        $tag = $m[$k][0];
+                        break;
+                    }
+                }
+            }
+            if($this->type==self::TYPE_STRING){
+                $tag=stripslashes($tag);
+            } else {
+                $tag=strtoupper($tag);
+            }
+            //$tag = $m[1][0];
             $this->start = $m[0][1] + strlen($m[0][0]);
         }
         return $tag;
@@ -230,27 +324,27 @@ class revpolnot_class
                 case ')':
                     break 2;
                 case ',':
-                   // $this->pushop(',', $op);
                     break 2;
                 default:
                     if (isset($this->reserved_words[$tag]) && $place_operand) {
                         // будет вызов
                         $parcount = 0;
-                        $_xR=$this->reserved_words[$tag];
+                        $_xR = $this->reserved_words[$tag];
                         if ($_xR != 0) {
                             if ('(' == $this->getnext($code)) {
-                                $parcount = 1;$last=count($this->syntax_tree);
+                                $parcount = 1;
+                                $last = count($this->syntax_tree);
                                 while (',' == ($x = $this->LtoP($code))) {
-                                   /*  //todo: repair
-                                   if($this->canexecute) {
-                                        $this->execute();
-                                        if($parcount + $last!=count($this->syntax_tree)){
-                                            $this->error('something wrong with parameters');
-                                        } else {
-                                            $parcount++;
-                                        }
-                                    } else*/
-                                        $parcount++;
+                                    /*  //todo: repair
+                                    if($this->canexecute) {
+                                         $this->execute();
+                                         if($parcount + $last!=count($this->syntax_tree)){
+                                             $this->error('something wrong with parameters');
+                                         } else {
+                                             $parcount++;
+                                         }
+                                     } else*/
+                                    $parcount++;
                                 }
                                 if ($x != ')')
                                     $this->error('unclosed parenthesis_1');
@@ -260,11 +354,11 @@ class revpolnot_class
                         }
                         $this->syntax_tree[] = array('call' => $tag, 'parcount' => $parcount);
                         $place_operand = false;
-                    } else if (($_xU= isset($this->unop[$tag])) && $place_operand) {
+                    } else if (($_xU = isset($this->unop[$tag])) && $place_operand) {
                         $this->pushop($tag, $op, true);
-                    } else if (($_xS=isset($this->suffix[$tag])) && !$place_operand) {
+                    } else if (($_xS = isset($this->suffix[$tag])) && !$place_operand) {
                         $this->syntax_tree[] = array('op' => $tag, 'unop' => 2);
-                    } else if (($_xO=isset($this->operation[$tag])) && !$place_operand) {
+                    } else if (($_xO = isset($this->operation[$tag])) && !$place_operand) {
                         $this->pushop($tag, $op);
                         $place_operand = true;
                     } else {
@@ -275,7 +369,7 @@ class revpolnot_class
                         if (!$place_operand && (0 != (self::EMPTY_FUNCTION_ALLOWED & $this->flags))) { // если операции нет - савим пустую операцию
                             $this->pushop('_EMPTY_', $op);
                         }
-                        $this->syntax_tree[] = array('data' => $tag);
+                        $this->syntax_tree[] = array('data' => $tag,'type'=>$this->type);
                         $place_operand = false;
                     }
             }
@@ -297,9 +391,8 @@ class revpolnot_class
         if (!$this->option_compiled) {
             $this->compile_options();
         }
-        $this->canexecute=$execute;
+        $this->canexecute = $execute;
 
-        $code = strtoupper($code);
         $this->errors = array();
         $this->start = 0;
 
@@ -320,10 +413,10 @@ class revpolnot_class
         }
         // вычисляем
         $this->execute();
-        if (count($this->ex_stack) < 1){
+        if (count($this->ex_stack) < 1) {
             $this->error('something gose wrong.');
             return null;
-        } else if (count($this->ex_stack) > 1){
+        } else if (count($this->ex_stack) > 1) {
             $this->error('something gose wrong!');
         }
         return call_user_func($this->evaluateTag, array_pop($this->ex_stack));
@@ -338,7 +431,7 @@ class revpolnot_class
             if (isset($r['call'])) {
                 $param = array();
                 for ($i = 0; $i < $r['parcount']; $i++) {
-                    array_unshift($param,array_pop($this->ex_stack));
+                    array_unshift($param, array_pop($this->ex_stack));
                 }
                 $this->ex_stack[] = call_user_func($this->executeOp, $r['call'], false, $param, $this->evaluateTag, true);
             } elseif (isset($r['data'])) {
