@@ -18,6 +18,7 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
      * проверка строительства дерева синтаксиса +
      * массовых вычислений. не остается ли грязи между итерациями?
      */
+    /*
     function testBuildingSyntaxTree()
     {
         $r = new rpn_class();
@@ -45,7 +46,7 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
             $this->assertEquals($k . "\n" . $v, $k . "\n" . json_encode($r->ev($k, false)));
         }
     }
-
+/**/
     /**
      * проверка результата
      */
@@ -79,15 +80,10 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
      */
     function _celOp($op)
     {
-        $result = false;
-        if (is_bool($op)) $result = $op;
+        if (!is_a($op,'operand'))
+            $result = $op;
         else {
-            if (isset($op['data'])) {
-                $result = $op['data'] > 202;
-            }
-            if (!empty($op['not'])) {
-                $result = !$result;
-            }
+            $result = $op->val > 202;
         }
         //if (\cel_class::$debug)
         //    echo "\n" . 'eval:' . json_encode($op) . '=' . ($result ? 'true' : 'false') . '<br>';
@@ -95,7 +91,7 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
         return $result;
     }
 
-    function _celOpr($op, $_1, $_2, $evaluate, $unop = 0)
+    function _celOpr($op, $_1, $_2, $evaluate)
     {
         $result = false;
         if ($op == '*') {
@@ -118,7 +114,7 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
                 else
                     $result = false;
             }
-        } else if ($op == 'NOT' && $unop) {
+        } else if ($op == 'NOT' && $op->unop) {
             $result = !call_user_func($evaluate, $_2);
         } else if ($op == 'NOT') { // делаем AND NOT
             if ($_1 === false || $_2 === true)
@@ -175,8 +171,9 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
      * repeat:6000 times; peak:62416B, calc:504B, final:328B, 4.055349 sec spent (2015-06-10 21:53:31)
      * repeat:6000 times; peak:62448B, calc:536B, final:328B, 4.000997 sec spent (2015-06-11 00:13:14)
      * repeat:6000 times; peak:62448B, calc:536B, final:328B, 4.017533 sec spent (2015-06-13 10:21:18)
-     *
+     * repeat:6000 times; peak:62952B, calc:1024B, final:328B, 4.169939 sec spent (2015-06-19 22:23:19)
      */
+    //*
     function testTrulyLongCalculation()
     {
         $mem0=memory_get_usage();
@@ -210,26 +207,26 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
             microtime(true)-$start_time0,
             date("Y-m-d H:i:s"));
     }
-
+/**/
     function _calcTag($op)
     {
         //$this->current_rpn->log('eval:' . json_encode($op));
-        if (!is_array($op) || !isset($op['data']))
+        if (!is_a($op,'operand'))
             $result = $op;
         else {
-            $result = 0 + $op['data']; // явное преобразование к числу
+            $result = 0 + $op->val; // явное преобразование к числу
         }
         return $result;
     }
 
-    function _calcOp($op, $_1, $_2, $evaluate, $unop = false)
+    function _calcOp($op, $_1, $_2, $evaluate)
     {
         if (0 == ($this->current_rpn->flags & rpn_class::SHOW_DEBUG))$this->current_rpn->log('oper:' . json_encode($_1) . ' ' . $op . ' ' . json_encode($_2));
         if ($op == '+') {
             return call_user_func($evaluate, $_1) + call_user_func($evaluate, $_2);
         } else if ($op == '++') {
             return call_user_func($evaluate, $_2) + 1;
-        } else if ($op == '-' && $unop) {
+        } else if ($op == '-' && $op->unop) {
             return -call_user_func($evaluate, $_2);
         } else if ($op == '-') {
             return call_user_func($evaluate, $_1) - call_user_func($evaluate, $_2);

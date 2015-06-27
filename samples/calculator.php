@@ -49,26 +49,27 @@ $r->option(array(
 
     'evaluateTag' => function ($op) use ($r) {
             $r->log('eval:' . (is_numeric($op) && is_nan($op) ? 'NaN' : json_encode($op)));
-            if (!is_array($op) || !isset($op['data']))
+            if (!is_a($op,'operand'))
                 $result = $op;
             else {
-                $result = 0 + $op['data']; // явное преобразование к числу
+                $result = 0 + $op->val; // явное преобразование к числу
             }
             return $result;
         },
-    'executeOp' => function ($op, $_1, $_2, $evaluate, $unop = false) use ($r) {
-            $r->log('oper:' . json_encode($_1) . ' ' . $op . ' ' . json_encode($_2));
+    'executeOp' => function ($op, $_1, $_2, $evaluate) use ($r) {
+            $r->log('oper:' . json_encode($_1) . ' ' . $op->val . ' ' . json_encode($_2));
 
             // проверка на процент от прошлого значения
-            if (!$unop && is_array($_2) && isset($_2['percent'])) {
-                $_2['data'] = (($_1 = call_user_func($evaluate, $_1)) / 100) * $_2['data'];
+            if (!$op->unop && is_a($_2,'operand') && $_2->percent) {
+                $_2->val = (($_1 = call_user_func($evaluate, $_1)) / 100) * $_2->val;
+                $_2->percent=false; // на всякий случай
             }
 
             if ($op == '+') {
                 return call_user_func($evaluate, $_1) + call_user_func($evaluate, $_2);
             } else if ($op == '^') {
                 return pow(call_user_func($evaluate, $_1), call_user_func($evaluate, $_2));
-            } else if ($op == '-' && $unop) {
+            } else if ($op == '-' && $op->unop) {
                 return -call_user_func($evaluate, $_2);
             } else if ($op == '-') {
                 return call_user_func($evaluate, $_1) - call_user_func($evaluate, $_2);
@@ -76,8 +77,9 @@ $r->option(array(
                 return call_user_func($evaluate, $_1) * call_user_func($evaluate, $_2);
             } else if ($op == '/') {
                 return call_user_func($evaluate, $_1) / call_user_func($evaluate, $_2);
-            } else if ($op == '%' && $unop) {
-                return array('data' => call_user_func($evaluate, $_2), 'percent' => '1');
+            } else if ($op == '%' && $op->unop) {
+                $_2->val=call_user_func($evaluate, $_2);$_2->percent=1;
+                return $_2;
             } elseif ($op == 'PI') {
                 return pi();
             } elseif ($op == 'E') {
@@ -142,9 +144,10 @@ foreach ([
              //  '(-3*-----4)*4++/5',
 //*
 
-              '-1',
-             '+1+1-1',
+             '10-20%',
              '-sqrt(sqr(2)+12)',
+             '-1',
+             '+1+1-1',
              'sin(0)',
              'pi', 'e',
              'sin(pi/2)',
@@ -152,7 +155,6 @@ foreach ([
              'sqrt(-1)',
              'sin(pi/2)',
              '1/0',
-             '10-20%',
              '0x8000',
              '3.4E+2',
              '00.3.4',

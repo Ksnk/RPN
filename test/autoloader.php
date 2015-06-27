@@ -27,5 +27,5 @@ class Autoloader
 }
 
 //$loader=new Autoloader('..;.'); //
-$loader=new Autoloader(__DIR__.'\..');
+$loader=new Autoloader(__DIR__.'\..;'.__DIR__.'\..\samples\twig');
 $loader->register();
