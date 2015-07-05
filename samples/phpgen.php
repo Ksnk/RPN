@@ -43,15 +43,20 @@ $r->option(array(
     ],
 
     /**
-     * идеология выполнения -
+     * РёРґРµРѕР»РѕРіРёСЏ РІС‹РїРѕР»РЅРµРЅРёСЏ -
+     * @param operand|mixed $op
      */
     'evaluateTag' => function ($op) use ($r) {
-            if (isset($op['type']) && $op['type'] == rpn_class::TYPE_STRING) {
-                $result = ''.$op['data'];
-            } elseif (isset($op['type']) && $op['type'] == rpn_class::TYPE_XSTRING) {
-                $result = $op['data'];
+            if(is_a($op,'operand')){
+                if ($op->type == rpn_class::TYPE_STRING) {
+                    $result = ''.$op->val;
+                } elseif ($op->type == rpn_class::TYPE_XSTRING) {
+                    $result = $op->val;
+                } else {
+                    $result = 0+$op->val;
+                }
             } else {
-                $result = 0+$op['data'];
+                $result=$op;
             }
             $r->log('eval:' . json_encode($op));
             return $result;
@@ -59,38 +64,36 @@ $r->option(array(
     'executeOp' => function ($op, $_1, $_2, $evaluate, $unop = false) use ($r) {
             $r->log('oper:' . json_encode($_1) . ' ' . $op . ' ' . json_encode($_2));
 
-            if (!$unop && $op=='+' && isset($_1['type']) && $_1['type']==rpn_class::TYPE_STRING) {
-                return ['data' => sprintf("('%s' . '%s')", str_replace("'",'\\\'',call_user_func($evaluate, $_1)), str_replace("'",'\\\'',call_user_func($evaluate, $_2))), 'type' => rpn_class::TYPE_XSTRING];
+            if (!$unop && $op=='+' && $_1->type==rpn_class::TYPE_STRING) {
+                return  new operand( sprintf("('%s' . '%s')", str_replace("'",'\\\'',call_user_func($evaluate, $_1)), str_replace("'",'\\\'',call_user_func($evaluate, $_2))),  rpn_class::TYPE_XSTRING);
             } elseif (!$unop && in_array($op, ['+', '-', '*', '/', '||', '&&', '>>', '<<'])) {
-
-
-                return ['data' => sprintf('(%s %s %s)', call_user_func($evaluate, $_1), $op, call_user_func($evaluate, $_2)), 'type' => 'XOPERATION'];
+                return  new operand(sprintf('(%s %s %s)', call_user_func($evaluate, $_1), $op, call_user_func($evaluate, $_2)), rpn_class::TYPE_XSTRING);
             } elseif (!$unop && $op == '^') {
-                return ['data' => sprintf('pow(%s,%s)', call_user_func($evaluate, $_1), call_user_func($evaluate, $_2)), 'type' => 'XOPERATION'];
+                return  new operand( sprintf('pow(%s,%s)', call_user_func($evaluate, $_1), call_user_func($evaluate, $_2)), rpn_class::TYPE_XSTRING);
             } elseif (1==$unop && $op == '++') {
-                return ['data' => sprintf('++%s', call_user_func($evaluate, $_2)), 'type' => 'XOPERATION'];
+                return  new operand(sprintf('++%s', call_user_func($evaluate, $_2)), rpn_class::TYPE_XSTRING);
             } elseif (2==$unop && $op == '++') {
-                return ['data' => sprintf('%s++', call_user_func($evaluate, $_2)), 'type' => 'XOPERATION'];
+                return  new operand( sprintf('%s++', call_user_func($evaluate, $_2)), rpn_class::TYPE_XSTRING);
             } elseif ($unop && $op == '-') {
-                return ['data' => sprintf('(- %s)', call_user_func($evaluate, $_2)), 'type' => 'XOPERATION'];
+                return  new operand( sprintf('(- %s)', call_user_func($evaluate, $_2)), rpn_class::TYPE_XSTRING);
             } elseif ($unop && $op == '+') {
-                return ['data' => sprintf('(%s)', call_user_func($evaluate, $_2)), 'type' => 'XOPERATION'];
+                return  new operand( sprintf('(%s)', call_user_func($evaluate, $_2)), rpn_class::TYPE_XSTRING);
             } elseif ($op == 'PI') {
-                return ['data' => 'M_PI', 'type' => 'XOPERATION'];
+                return  new operand('M_PI', rpn_class::TYPE_XSTRING);
             } elseif ($op == 'E') {
-                return ['data' => 'M_E', 'type' => 'XOPERATION'];
+                return  new operand( 'M_E', rpn_class::TYPE_XSTRING);
             } elseif ($op == 'TAN') {
-                return ['data' => sprintf('tan(%s)', call_user_func($evaluate, $_2[0])), 'type' => 'XOPERATION'];
+                return  new operand( sprintf('tan(%s)', call_user_func($evaluate, $_2[0])), rpn_class::TYPE_XSTRING);
             } elseif ($op == 'ABS') {
-                return ['data' => sprintf('abs(%s)', call_user_func($evaluate, $_2[0])), 'type' => 'XOPERATION'];
+                return  new operand(sprintf('abs(%s)', call_user_func($evaluate, $_2[0])), rpn_class::TYPE_XSTRING);
             } elseif ($op == 'SIN') {
-                return ['data' => sprintf('sin(%s)', call_user_func($evaluate, $_2[0])), 'type' => 'XOPERATION'];
+                return new operand(sprintf('sin(%s)', call_user_func($evaluate, $_2[0])), rpn_class::TYPE_XSTRING);
             } elseif ($op == 'X') {
-                return ['data' => '$x', 'type' => 'XOPERATION'];
+                return new operand('$x', rpn_class::TYPE_XSTRING);
             } elseif ($op == 'COS') {
-                return ['data' => sprintf('cos(%s)', call_user_func($evaluate, $_2[0])), 'type' => 'XOPERATION'];
+                return new operand(sprintf('cos(%s)', call_user_func($evaluate, $_2[0])), rpn_class::TYPE_XSTRING);
             } elseif ($op == 'TIME') {
-                return ['data' => 'time()', 'type' => 'XOPERATION'];
+                return new operand('time()', rpn_class::TYPE_XSTRING);
             } else {
                 $r->error('unknown operation ' . $op);
             }

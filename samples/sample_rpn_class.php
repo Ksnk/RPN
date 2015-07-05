@@ -52,7 +52,7 @@ $r->option([
     'evaluateTag'=>function ($op) use ($r,$item_category) {
             if(is_bool($op)) $result= $op;
             else {
-                $result=in_array($op['data'],$item_category) ;
+                $result=in_array($op->val,$item_category) ;
                 $r->log('get:'.json_encode($op).'='.json_encode($result));
             }
             return $result;
@@ -60,8 +60,8 @@ $r->option([
     'executeOp'=>function ($op,$_1,$_2,$evaluate,$unop=false) use ($r,$item_category,$parents){
             $result=false;
             if($op=='*'){
-                if(is_array($_2) && isset($_2['data'])){
-                    $result = in_array($_2['data'],$item_category) || in_array($_2['data'],$parents);
+                if(is_array($_2) && isset($_2->val)){
+                    $result = in_array($_2->val,$item_category) || in_array($_2['data'],$parents);
                 } else {
                     $result = $_2;
                 }
@@ -111,13 +111,13 @@ echo "\n".json_encode($r->ev($code));
  */
 $r->option([
     'evaluateTag'=>function ($op) use ($r,$category_tree) {
-        if(!isset($op['data'])) $result= $op;
+        if(!isset($op->val)) $result= $op;
         else {
-            if(is_array($op['data']))
-                $result=$op['data'];
+            if(is_array($op->val))
+                $result=$op->val;
             else
-                $result=array(0+$op['data']) ;
-            if(isset($op['suf'])){
+                $result=array(0+$op->val) ;
+            if(''!=$op->suf){
                 $level=$result;
                 do{
                     $level0=array();
@@ -137,7 +137,7 @@ $r->option([
     'executeOp'=>function ($op,$_1,$_2,$evaluate,$unop=false) use ($r,$category_tree){
             $result=[];
             if($op=='*' && $unop){
-                $result=array('data'=>call_user_func($evaluate,$_2),'suf'=>'*');
+                $result=new operand(call_user_func($evaluate,$_2));$result->suf='*';
             } else if($op=='OR' || $op=='_EMPTY_'){
                 $result=array_merge(call_user_func($evaluate,$_1),call_user_func($evaluate,$_2));
             } else if($op=='AND') {

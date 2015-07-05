@@ -67,8 +67,9 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
                      '(172* ) OR (501* OR 128) AND NOT 201*' => true,
                      '(172* ) OR not(501* OR 128) AND NOT 201*' => false,
                  ] as $k => $v) {
+            $result=$r->ev($k);
             $this->assertEquals('[]', json_encode($r->error()));
-            $this->assertEquals($k . "\n" . json_encode($v), $k . "\n" . json_encode($r->ev($k)));
+            $this->assertEquals($k . "\n" . json_encode($v), $k . "\n" . json_encode($result));
         }
     }
 
@@ -94,9 +95,9 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
     function _celOpr($op, $_1, $_2, $evaluate)
     {
         $result = false;
-        if ($op == '*') {
+        if ($op->val == '*') {
             $result = call_user_func($evaluate, $_2);
-        } else if ($op == 'OR' || $op == '_EMPTY_') {
+        } else if ($op->val == 'OR' || $op->val == '_EMPTY_') {
             if ($_1 === true || $_2 === true) {
                 $result = true;
             } else {
@@ -105,7 +106,7 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
                 else
                     $result = true;
             }
-        } else if ($op == 'AND') {
+        } else if ($op->val == 'AND') {
             if ($_1 === false || $_2 === false) {
                 $result = false;
             } else {
@@ -114,9 +115,9 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
                 else
                     $result = false;
             }
-        } else if ($op == 'NOT' && $op->unop) {
+        } else if ($op->val == 'NOT' && $op->unop) {
             $result = !call_user_func($evaluate, $_2);
-        } else if ($op == 'NOT') { // делаем AND NOT
+        } else if ($op->val == 'NOT') { // делаем AND NOT
             if ($_1 === false || $_2 === true)
                 $result = false;
             else

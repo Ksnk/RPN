@@ -17,12 +17,10 @@ class twig2php_Test extends PHPUnit_Framework_TestCase
         //$filename = "php://memory";
 
         $fp = fopen("php://memory", "w+b");
-        fwrite($fp, '
-        Hello, world!
-        ');
+        fwrite($fp, str_repeat('Привет мир!',256));//1024));
         rewind($fp);
-
-        $this->assertEquals($r->evstream($fp), '
+        $r->handler=$fp;
+        $this->assertEquals($r->tplcalc(), '
         Hello, world!
         ');
         fclose($fp);

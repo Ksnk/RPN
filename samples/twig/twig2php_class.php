@@ -20,7 +20,22 @@ class twig2php_class extends rpn_class
         TYPE_SENTENSE = 101,
         TYPE_LITERAL = 102;
 
-    var $filename = '';
+    const BUFLEN= 1024;
+
+    var $filename = '',
+        $handler='',
+        /** состояние сборщика лексем getnext */
+        $state=0,
+
+        $BLOCK_START='{%',
+        $BLOCK_END = '%}',
+        $VARIABLE_START = '{{',
+        $VARIABLE_END = '}}',
+        $COMMENT_START = '{#',
+        $COMMENT_END = '#}',
+        $COMMENT_LINE = '##',
+        $trim = true,
+        $COMPRESS_START_BLOCK =true;
 
     /**
      * Масив для хранения упрощенных способов трансляции конструкции
@@ -32,7 +47,9 @@ class twig2php_class extends rpn_class
      * то же самое для унарных операций
      * @var array
      */
-    var $unpattern = array();
+    var $unpattern = array(),
+        /** var operand[] */
+        $opensentence = array(); // комплект открытых тегов, для портирования
 
     function __construct($options = array())
     {
@@ -46,7 +63,7 @@ class twig2php_class extends rpn_class
             'executeOp' => array($this, '_calcOp'),
 
             // Enviroment setting
-            'BLOCK_START' => '{%',
+/*            'BLOCK_START' => '{%',
             'BLOCK_END' => '%}',
             'VARIABLE_START' => '{{',
             'VARIABLE_END' => '}}',
@@ -54,7 +71,7 @@ class twig2php_class extends rpn_class
             'COMMENT_END' => '#}',
             'COMMENT_LINE' => '##',
             'trim' => true,
-            'COMPRESS_START_BLOCK' => true
+            'COMPRESS_START_BLOCK' => true*/
         ));
         $this->t_conv['E'] = self::TYPE_SENTENSE;
         // $this->error_msg['unexpected construction'] = 'something strange catched.';
@@ -120,7 +137,10 @@ class twig2php_class extends rpn_class
 
     protected function execOp($op, $_1, $_2, $unop = false)
     {
-        if (!$unop && isset($this->pattern[$op])) {
+        if($op->unop && method_exists($this,$op->val)){
+            return call_user_func(array($this,$op->val),$_2);
+        }
+        if (!$op->unop && isset($this->pattern[$op->val])) {
             $op = $this->pattern[$op];
             $type = $op->type;
             return $this->oper(sprintf($op->val, $this->execTag($_1, $type{1}), $this->execTag($_2, $type{2})), $type{0});
@@ -251,6 +271,64 @@ class twig2php_class extends rpn_class
     function oper($value, $type = self::TYPE_NONE, $pos = 0)
     {
         return new operand($value, $type, $pos);
+    }
+
+
+    function getnext(){
+        static $reg0='',$xtag=false;
+
+        if($this->has_back) {
+            $this->has_back=false;
+            return $this->currenttag;
+        }
+
+        if($this->state==0){
+            // выедаем конструкты вне twig'а
+            if(empty($reg0)){
+                $reg0 = "~(.*?)(";
+                foreach (array('COMMENT_LINE', 'VARIABLE_START', 'COMMENT_START','BLOCK_START') as $r)
+                    $reg0 .= preg_quote($this->$r, '#~') . '|';
+                $reg0 .= '$)(\-?)~si';
+            }
+
+            $this->getcode();
+            while ($this->code && preg_match($reg0, $this->code, $m, 0, $this->start)) {
+                // найти начало следующего тега шаблонизатора
+                $l=strlen($m[1]);
+                if( $m[1]{$l-1}>"\xC0" || $m[1]{$l-1}=="{" ) {
+                    $l-=1;
+                }
+                $this->syntax_tree[] = $this->oper(substr($m[1],0,$l-1), self::TYPE_STRING, $this->start);
+                $tag=$this->oper('_echo_',self::TYPE_OPERATION,$this->start);
+                $tag->unop = 1;
+                $this->syntax_tree[] = $tag;
+                $this->start+=$l;
+
+                if ( $m[2] == $this->COMMENT_LINE ) {
+                    // читаем до следующего конца строки
+                    $this->skiptill('/\r?\n/s');
+                } else if ( $m[2] == $this->COMMENT_START ) {
+                    $this->skiptill('/'.preg_quote($this->COMMENT_END).'/s');
+                } else if ( $m[2] == $this->VARIABLE_START ) {
+                    $this->skiptill('/'.preg_quote($this->COMMENT_END).'/s');
+                }
+                //    break; // что-то незаладилось в реге
+                $this->getcode();
+            }
+            return $this->currenttag=$xtag;
+        } else {
+            return parent::getnext();
+        }
+    }
+
+    function skiptill($s){
+        do {
+            $this->getcode();
+            if(preg_match($s, $this->code, $mm,0, $this->start)){
+                $this->start+=strlen($mm[0]);
+                break;
+            }
+        } while($this->code!='');
     }
 
     /**
@@ -419,10 +497,56 @@ class twig2php_class extends rpn_class
         return $res;
     }
 
+    protected function getcode(){
+        if($this->start>self::BUFLEN){
+            $this->code=substr($this->code,$this->start);
+            if($this->code===false) $this->code='';
+            $this->xstart+=$this->start;
+            $this->start=0;
+        }
+        if(strlen($this->code)<self::BUFLEN && !feof($this->handler)){
+            $this->code.=fread($this->handler,self::BUFLEN);
+            if(strlen($this->code)<2*self::BUFLEN && !feof($this->handler)){
+                $this->code.=fread($this->handler,self::BUFLEN);
+            }
+        }
+    }
+
     function _echo_($op)
     {
         return $this->to('S', $op);
     }
+
+    /**
+     * функция компиляции одного подшаблона.
+     * + сборка на стеке операндов готовой конструкции
+     * + лексический анализ
+     * @param string $class
+     * @return mixed|string
+     */
+    function tplcalc($class = 'compiler')
+    {
+        $tag = array('tag' => 'class', 'import' => array(), 'macro' => array(), 'name' => $class, 'data' => array());
+        $this->opensentence[] = & $tag;
+
+        $tagx = array('tag' => 'block', 'name' => ' ', 'operand' => count($this->operand), 'data' => array());
+
+        $this->block_internal(array(), $tagx);
+
+
+        array_pop($this->opensentence);
+        // TODO: разобраться с правильным наследованием _
+        // сейчас просто удаляем метод _ из отнаследованного шаблона
+        if (!empty($tag['extends'])) {
+            for ($x = 0; $x < count($tag['data']); $x++) {
+                if (preg_match('/function\s+_\s*\(/i', $tag['data'][$x]))
+                    break;
+            }
+            unset($tag['data'][$x]);
+        }
+        return $this->template('class', $tag);
+    }
+
 
     /**
      * фильтр - replace
@@ -519,7 +643,6 @@ class twig2php_class extends rpn_class
     public
         $currentFunction = '', // имя текущей функции block или macro
         //для корректной работы parent()
-        $opensentence = array(), // комплект открытых тегов, для портирования
         /** @var string - скрипт для выполнения */
         $script,
         /** @var boolean - сохранять-несохранять */
@@ -583,29 +706,33 @@ class twig2php_class extends rpn_class
         return $op1;
     }
 
+    function back(){
+        $this->has_back=true;
+    }
+
     /**
      * отработка тега block, блок верхнего уровня является "корневым" элементом
-     * @param array|null $tag_waitingfor
-     * @param null $tag
+     * @param operand[]|null $tag_waitingfor
+     * @param operand|null $tag
      */
     function block_internal($tag_waitingfor = array(), &$tag = null)
     {
         if (empty($tag))
             $tag = array('tag' => 'block', 'operand' => count($this->operand));
         $data = array();
-        $this->newop('(');
+        $this->pushop('(');
         do {
-            if ($this->getNext() == self::TYPE_EOF) {
+            if ($this->getNext() === false ) {
                 $this->back();
                 break;
             }
-            if (!empty($tag_waitingfor) && in_array($this->op->val, $tag_waitingfor)) {
+            if (!empty($tag_waitingfor) && in_array($this->currenttag->val, $tag_waitingfor)) {
                 $this->back();
                 break;
             }
-            if ($this->op->type == self::TYPE_COMMA && empty($this->op->val)) {
+            if ($this->currenttag->type == self::TYPE_COMMA && empty($this->currenttag->val)) {
 
-            } elseif ($this->exec_tag($this->op->val)) {
+            } elseif ($this->exec_tag($this->currenttag->val)) {
                 $op = $this->popOp();
                 if (!empty($op)) {
                     $op = $this->to('S', $op);
@@ -635,7 +762,7 @@ class twig2php_class extends rpn_class
                 //$this->getNext();
             }
         } while (true);
-        $this->newop(')'); // свернуть все операции
+        $this->pushop(')'); // свернуть все операции
 
         /**
          * оптимизация данных для вывода блока в шаблоне
@@ -695,35 +822,6 @@ class twig2php_class extends rpn_class
                 return true;
         }
         return false;
-    }
-
-    protected function get_reg(&$types)
-    {
-        /**
-         * массив типов, определенных регуляркой. Повязан на суб-номер в регулярке
-         */
-        $types = array(0 //0 - just skip
-        , 0, self::TYPE_STRING
-        , self::TYPE_DIGIT
-        , self::TYPE_COMMA
-        , self::TYPE_OPERATION //5
-        , self::TYPE_ID //6  TYPE_OPERAND
-        , self::TYPE_OPERATION //7
-        , self::TYPE_COMMA //8
-        );
-        return '#[\n\r\s]*' // # - пропуск пробелов
-        . '(?:' #1#2 - заквоченные без слеша на конце - TYPE_OPERAND
-        . '([\'`"])((?:[^\\1\\\\]|\\\\.)*?)\\1'
-        . '|(\d\w*)' //	#6 - цифры это слова, начинающиеся с цифры - TYPE_DIGITS
-        . '|(-?' . $this->options['VARIABLE_END'] . '|-?' . $this->options['BLOCK_END'] . ')' //	Хвосты тегов
-        . '|' #4,5 - многобуквенные операции - TYPE_OPERATION
-        . '((?:' . implode('|', $this->cake['WORD_OP']) . ')(?=\b)|' . implode('|', $this->cake['MC_JUST_OP']) . ')'
-        . '|(\w+)' #6 - просто слова TYPE_OPERAND
-        . '|' #7 - однобуквенные операции - TYPE_OPERATION
-        . '([' . implode('', $this->cake['JUST_OP']) . '\!])'
-        . '|(.)' #8 - однобуквенные знаки препинания - TYPE_COMMA
-        . ')#si';
-
     }
 
     /**
@@ -1116,36 +1214,6 @@ class twig2php_class extends rpn_class
         return;
     }
 
-
-    /**
-     * функция компиляции одного подшаблона.
-     * + сборка на стеке операндов готовой конструкции
-     * + лексический анализ
-     * @param string $class
-     * @return mixed|string
-     */
-    function tplcalc($class = 'compiler')
-    {
-        $tag = array('tag' => 'class', 'import' => array(), 'macro' => array(), 'name' => $class, 'data' => array());
-        $this->opensentence[] = & $tag;
-
-        $tagx = array('tag' => 'block', 'name' => ' ', 'operand' => count($this->operand), 'data' => array());
-
-        $this->block_internal(array(), $tagx);
-
-
-        array_pop($this->opensentence);
-        // TODO: разобраться с правильным наследованием _
-        // сейчас просто удаляем метод _ из отнаследованного шаблона
-        if (!empty($tag['extends'])) {
-            for ($x = 0; $x < count($tag['data']); $x++) {
-                if (preg_match('/function\s+_\s*\(/i', $tag['data'][$x]))
-                    break;
-            }
-            unset($tag['data'][$x]);
-        }
-        return $this->template('class', $tag);
-    }
 
     /**
      * Встроенные в класс рендерер ...

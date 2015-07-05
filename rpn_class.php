@@ -10,6 +10,9 @@
 class rpn_class
 {
 
+    /**
+     * комплект типов на все случаи  жизни
+     */
     const
         TYPE_OPERAND = 1
     , TYPE_XBOOLEAN = 2
@@ -30,19 +33,27 @@ class rpn_class
     , TYPE_LIST = 17
     , TYPE_SLICE = 18;
 
+    /**
+     * флаги инициализации класса
+     */
     const
-        THROW_EXCEPTION_ONERROR = 1,
+        THROW_EXCEPTION_ONERROR = 1, // выкинуть exception в случае ошибки
         // STOP_ONERROR = 2, // не пригодился
-        SHOW_ERROR = 4,
-        SHOW_DEBUG = 8,
-        EMPTY_FUNCTION_ALLOWED = 16,
+        SHOW_ERROR = 4, // выводить в лог ошибки
+        SHOW_DEBUG = 8, // выводить в лог отладку
+        EMPTY_FUNCTION_ALLOWED = 16, // допускается автоматическое дописывание пустой функции между операторами
 
         ALLOW_STRINGS = 32, // допускаются операнды  - строки
         ALLOW_REAL = 64, // допускаются операнды - вещественные числа.
-        ALLOW_ID = 128, // допускаются операнды - неописанные идентификаторы
+        ALLOW_ID = 128, // допускаются операнды - неведомые идентификаторы
         ALLOW_COMMA = 256; // допускаются неописанные знаки препинания (,;)
 
+    /**
+     * место для хранения композиции из флагов
+     * @var int
+     */
     var $flags = 0; // 1 exception, 2-stop on error, 4-error, 8-debug
+
     /**
      * массив операций, суффиксов и унарных. По нему будем строить регулярку
      */
@@ -62,7 +73,7 @@ class rpn_class
     protected $reserved_words = array();
 
     /**
-     * имя класса для вызова исключения
+     * имя класса-исключения, которое будем вызывать
      */
     protected $exception_class_name = 'Exception';
 
@@ -76,24 +87,38 @@ class rpn_class
      * временные переменные, только на время трансляции или инициализации.
      */
 
-    /** @var operand[] */
+    /** @var operand[] - стек операций */
     protected $op = array();
+    /** @var mixed стек операндов. В конце останется только один...  */
+    private $ex_stack = array();
 
-    private $start = 0;
+    /** @var int начало обрабатываемой конструкции в строке, уже обработанный участок, не вошедший в строку */
+    protected $start = 0,$xstart=0;
+
+    /** @var string|string[] - массив ошибок  */
     private $errors = array();
-    private $sintaxreg = '##i';
-    private $tagreg = '';
-    private $canexecute = false;
 
+    /** @var string - регулярка, собираемая после установки всех опций */
+    private $sintaxreg = '##i';
+
+    /** @var string - способ отстрелить себе ногу. Регулярка для определения операнда */
+    private $tagreg = '';
+
+    /** @var bool вернуть предыдущий тег еще раз операцией getnext */
+    protected $has_back =false;
+
+    /** @var operand - вот этот тег. Текуший тег, выковырянный из сводящей строки */
+    protected $currenttag =false;
+
+    /** @var bool - а не нужно ли перегенерировать регулярку? */
     private $option_compiled = false;
 
-    private $ex_stack = array();
-    /** @var operand[] */
-    private $syntax_tree = array();
+    /** @var operand[] - синтаксический поток (почему дерево?)*/
+    protected $syntax_tree = array();
     private $types = array();
     private $type = 0;
     private $pastcode = '';
-    private $code;
+    protected $code;
 
     /**
      * вывод информации в лог отладки
@@ -258,18 +283,16 @@ class rpn_class
         }
         $op->prio = $unop ? 10 : $this->operation[$op->val];
         while (!empty($this->op) && $op->val != '(') {
-            end($this->op);
-            $past =& $this->op[key($this->op)];
-            //$past = array_pop($this->op);
+            $past = array_pop($this->op);
             if ($past->val == '(' && $op->val == ')') {
-                array_pop($this->op);
+                //array_pop($this->op);
                 return;
             }
             if ($op->prio <= $past->prio) {
-                $this->syntax_tree[] = array_pop($this->op); // means st[]=past
-                if ($this->canexecute) $this->execute();
+                $this->syntax_tree[] = $past;
+                $this->execute();
             } else {
-//                $this->op[] = $past;
+                $this->op[] = $past;
                 break;
             }
         }
@@ -278,15 +301,19 @@ class rpn_class
         }
     }
 
-    private function getnext()
+    protected function getcode(){
+    }
+
+    protected function getnext()
     {
         $tag = false;
         $type = 0;
+        $this->getcode();
         if (preg_match($this->sintaxreg, $this->code, $m, PREG_OFFSET_CAPTURE, $this->start)) {
             // $this->log('found:'.json_encode($m).$this->start);
             if ($this->start != $m[0][1]) {
                 $this->log('error:' . json_encode($m[0]) . $this->start);
-                $this->error(sprintf('[%d:%d] ', $this->start, $m[0][1] - $this->start));
+                $this->error(sprintf('[%d:%d] ', $this->xstart+$this->start, $this->xstart+$m[0][1] - $this->start));
             }
             foreach ($this->types as $k => $v) {
                 if (0 != $v) {
@@ -304,9 +331,9 @@ class rpn_class
             }
             //$tag = $m[1][0];
             $this->start = $m[0][1] + strlen($m[0][0]);
-            $tag = new operand($tag, $type, $this->start);
+            $tag = new operand($tag, $type, $this->xstart+$this->start);
         }
-        return $tag;
+        return $this->currenttag=$tag;
     }
 
     /**
@@ -397,28 +424,23 @@ class rpn_class
     /**
      * evaluate, вроде как
      * @param string $code
-     * @param bool $execute
      * @return mixed
      */
-    function ev($code, $execute = true) //, $evaluateTag = null, $executeOp = null)
+    function ev($code='') //, $evaluateTag = null, $executeOp = null)
     {
         if (!$this->option_compiled) {
             $this->compile_options();
         }
-        $this->canexecute = $execute;
 
         $this->errors = array();
-        $this->start = 0;
+        $this->start = 0;$this->xstart=0;
         $this->code = $code;
         $this->syntax_tree = array();
         $this->ex_stack = array(); // стек операндов
         $this->LtoP();
         if (0 < strlen($this->pastcode)) {
-            $this->log('xxx:' . $this->start);
-            $this->error(sprintf('[%d:%d] ', $this->start, strlen($code) - $this->start));
-        }
-        if (!$execute) {
-            return $this->syntax_tree;
+            $this->log('xxx:' . $this->xstart+$this->start);
+            $this->error(sprintf('[%d:%d] ', $this->xstart+$this->start, $this->xstart+strlen($code) - $this->start));
         }
         // вычисляем
         $this->execute();
@@ -472,6 +494,7 @@ class rpn_class
             }
         }
     }
+
 }
 
 /**
