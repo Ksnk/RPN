@@ -6,7 +6,6 @@
  * Date: 08.06.15
  * Time: 13:53
  *
- * @method assertEquals - злой phpstorm не видит моего PHPUnit и обижаеццо
  */
 class rpn_WrongDataTest extends PHPUnit_Framework_TestCase
 {
@@ -22,10 +21,10 @@ class rpn_WrongDataTest extends PHPUnit_Framework_TestCase
             'flags' => rpn_class::EMPTY_FUNCTION_ALLOWED
   //      | 12
         ,
-            'operation' => ['AND' => 3, 'OR' => 3, 'NOT' => 3],
+            'operation' => ['and' => 3, 'or' => 3, 'not' => 3],
             'suffix' => ['*' => 3],
             'tagreg' => '\b(\d+)\b',
-            'unop' => ['NOT' => 3],
+            'unop' => ['not' => 3],
         ));
         foreach ([
                      'Hello world!' =>['["[0:12] "]','[]'],
@@ -48,10 +47,10 @@ class rpn_WrongDataTest extends PHPUnit_Framework_TestCase
         $r->option(array(
              'flags' =>rpn_class::EMPTY_FUNCTION_ALLOWED
                  +rpn_class::THROW_EXCEPTION_ONERROR,
-            'operation' => ['AND' => 3, 'OR' => 3, 'NOT' => 3],
+            'operation' => ['and' => 3, 'or' => 3, 'not' => 3],
             'suffix' => ['*' => 3],
             'tagreg' => '\b(\d+)\b',
-            'unop' => ['NOT' => 3],
+            'unop' => ['not' => 3],
         ));
         foreach ([
                      'Hello world!' =>['"[0:12] "','""'],

@@ -50,15 +50,15 @@ $r->option(array(
                     return call_user_func($evaluate, $_1) * call_user_func($evaluate, $_2);
                 } else if ($op == '/') {
                     return call_user_func($evaluate, $_1) / call_user_func($evaluate, $_2);
-                } elseif ($op == 'PI') {
+                } elseif ($op == 'pi') {
                     return pi();
-                } elseif ($op == 'E') {
+                } elseif ($op == 'e') {
                     return M_E;
-                } elseif ($op == 'POW') {
+                } elseif ($op == 'pow') {
                     return pow(call_user_func($evaluate, $_2[0]),call_user_func($evaluate, $_2[1]));
-                } elseif ($op == 'FLOOR') {
+                } elseif ($op == 'floor') {
                     return floor(call_user_func($evaluate, $_2[0]));
-                } elseif ($op == 'SUMM') {
+                } elseif ($op == 'summ') {
                     $result=0;
                     foreach($_2 as $x){
                         $result+=call_user_func($evaluate, $x);

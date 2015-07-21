@@ -64,19 +64,19 @@ $r->option(array(
     'executeOp' => function ($op, $_1, $_2, $evaluate, $unop = false) use ($r) {
             $r->log('oper:' . json_encode($_1) . ' ' . $op . ' ' . json_encode($_2));
 
-            if (!$unop && $op=='+' && $_1->type==rpn_class::TYPE_STRING) {
+            if (!$op->unop && $op=='+' && $_1->type==rpn_class::TYPE_STRING) {
                 return  new operand( sprintf("('%s' . '%s')", str_replace("'",'\\\'',call_user_func($evaluate, $_1)), str_replace("'",'\\\'',call_user_func($evaluate, $_2))),  rpn_class::TYPE_XSTRING);
-            } elseif (!$unop && in_array($op, ['+', '-', '*', '/', '||', '&&', '>>', '<<'])) {
+            } elseif (!$op->unop>0 && in_array($op, ['+', '-', '*', '/', '||', '&&', '>>', '<<'])) {
                 return  new operand(sprintf('(%s %s %s)', call_user_func($evaluate, $_1), $op, call_user_func($evaluate, $_2)), rpn_class::TYPE_XSTRING);
-            } elseif (!$unop && $op == '^') {
+            } elseif (!$op->unop>0 && $op == '^') {
                 return  new operand( sprintf('pow(%s,%s)', call_user_func($evaluate, $_1), call_user_func($evaluate, $_2)), rpn_class::TYPE_XSTRING);
-            } elseif (1==$unop && $op == '++') {
+            } elseif (1==$op->unop && $op == '++') {
                 return  new operand(sprintf('++%s', call_user_func($evaluate, $_2)), rpn_class::TYPE_XSTRING);
-            } elseif (2==$unop && $op == '++') {
+            } elseif (2==$op->unop && $op == '++') {
                 return  new operand( sprintf('%s++', call_user_func($evaluate, $_2)), rpn_class::TYPE_XSTRING);
-            } elseif ($unop && $op == '-') {
+            } elseif ($op->unop && $op == '-') {
                 return  new operand( sprintf('(- %s)', call_user_func($evaluate, $_2)), rpn_class::TYPE_XSTRING);
-            } elseif ($unop && $op == '+') {
+            } elseif ($op->unop && $op == '+') {
                 return  new operand( sprintf('(%s)', call_user_func($evaluate, $_2)), rpn_class::TYPE_XSTRING);
             } elseif ($op == 'PI') {
                 return  new operand('M_PI', rpn_class::TYPE_XSTRING);
@@ -105,14 +105,15 @@ $x = 1;
 
 foreach ([  //*
              '1' => ['result' =>1],
-           /*  '1+1' => ['result' =>2],
+             '1+1' => ['result' =>2],
+             '(1+1*2+1)+(1*2)' => ['result' =>3],
              '1+1*2' => ['result' =>3],
              '1*1+2' => ['result' =>3],
              '1*1+2^2' => ['result' =>5],
              'pi/2' => ['result' =>pi()/2],
              'sin(pi/2)' => ['result' =>1],
              'sinx(pi/2)' => ['error' => ["[0:4] "]],
-             'sin(pii/x)' => ['error' => null],
+            // 'sin(pii/x)' => ['error' => null],
              'sin(pi/x' => ['error' => null],
              'x+1' => ['x'=>1,'result' =>2],
              '-x+1' => ['x'=>1,'result' =>0],

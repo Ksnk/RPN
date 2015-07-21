@@ -55,10 +55,10 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
         $r = new rpn_class();
         $r->option(array(
             // 'flags' => 12,
-            'operation' => ['AND' => 3, 'OR' => 3, 'NOT' => 3],
+            'operation' => ['and' => 3, 'or' => 3, 'not' => 3],
             'suffix' => ['*' => 3],
             'tagreg' => '\b(\d+)\b',
-            'unop' => ['NOT' => 3],
+            'unop' => ['not' => 3],
 
             'evaluateTag' => [$this, '_celOp'],
             'executeOp' => [$this, '_celOpr']
@@ -97,7 +97,7 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
         $result = false;
         if ($op->val == '*') {
             $result = call_user_func($evaluate, $_2);
-        } else if ($op->val == 'OR' || $op->val == '_EMPTY_') {
+        } else if ($op->val == 'or' || $op->val == '_EMPTY_') {
             if ($_1 === true || $_2 === true) {
                 $result = true;
             } else {
@@ -106,7 +106,7 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
                 else
                     $result = true;
             }
-        } else if ($op->val == 'AND') {
+        } else if ($op->val == 'and') {
             if ($_1 === false || $_2 === false) {
                 $result = false;
             } else {
@@ -115,9 +115,9 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
                 else
                     $result = false;
             }
-        } else if ($op->val == 'NOT' && $op->unop) {
+        } else if ($op->val == 'not' && $op->unop) {
             $result = !call_user_func($evaluate, $_2);
-        } else if ($op->val == 'NOT') { // делаем AND NOT
+        } else if ($op->val == 'not') { // делаем AND NOT
             if ($_1 === false || $_2 === true)
                 $result = false;
             else
@@ -139,10 +139,10 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
             'suffix' => ['++' => 1],
             'unop' => ['-' => 1],
             'tagreg' => '\b\d+\b',
-            'reserved_words' => ['PI' => 0, 'E' => 0,
-                'FLOOR' => 1,
-                'POW' => 2,
-                'SUMM' => -1,
+            'reserved_words' => ['pi' => 0, 'e' => 0,
+                'floor' => 1,
+                'pow' => 2,
+                'summ' => -1,
             ],
 
             'evaluateTag' => [$this, '_calcTag'],
@@ -191,7 +191,8 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
             'executeOp' => [$this, '_calcOp'],
         ));
 
-        $repeat=6000;
+        $repeat=extension_loaded('xdebug')?600:6000;
+
         $code=str_repeat('(1+2-4*1)+',$repeat).'0'; // -1 repeated $repeat times with 10*$repeat+1 bytes long
         $before_calc=memory_get_usage();
         $result = $this->current_rpn->ev($code);
@@ -235,15 +236,15 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
             return call_user_func($evaluate, $_1) * call_user_func($evaluate, $_2);
         } else if ($op == '/') {
             return call_user_func($evaluate, $_1) / call_user_func($evaluate, $_2);
-        } elseif ($op == 'PI') {
+        } elseif ($op == 'pi') {
             return pi();
-        } elseif ($op == 'E') {
+        } elseif ($op == 'e') {
             return M_E;
-        } elseif ($op == 'POW') {
+        } elseif ($op == 'pow') {
             return pow(call_user_func($evaluate, $_2[0]),call_user_func($evaluate, $_2[1]));
-        } elseif ($op == 'FLOOR') {
+        } elseif ($op == 'floor') {
             return floor(call_user_func($evaluate, $_2[0]));
-        } elseif ($op == 'SUMM') {
+        } elseif ($op == 'summ') {
             $result=0;
             foreach($_2 as $x){
                 $result+=call_user_func($evaluate, $x);
