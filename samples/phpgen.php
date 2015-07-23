@@ -33,13 +33,13 @@ $r->option(array(
     'suffix' => ['++' => 1],
     'unop' => ['++'=>1,'-' => 1, '+' => 1],
     'tagreg' => '\b(?:\d\w*(?:\.[\d]+)?(?:E[\+\-][\d]+)?)',
-    'reserved_words' => ['PI' => 0, 'E' => 0,
-        'TAN' => 1,
-        'ABS' => 1,
-        'SIN' => 1,
-        'COS' => 1,
-        'X' => 0,
-        'TIME' => 0,
+    'reserved_words' => ['pi' => 0, 'e' => 0,
+        'tan' => 1,
+        'abs' => 1,
+        'sin' => 1,
+        'cos' => 1,
+        'x' => 0,
+        'time' => 0,
     ],
 
     /**
@@ -78,21 +78,21 @@ $r->option(array(
                 return  new operand( sprintf('(- %s)', call_user_func($evaluate, $_2)), rpn_class::TYPE_XSTRING);
             } elseif ($op->unop && $op == '+') {
                 return  new operand( sprintf('(%s)', call_user_func($evaluate, $_2)), rpn_class::TYPE_XSTRING);
-            } elseif ($op == 'PI') {
+            } elseif ($op == 'pi') {
                 return  new operand('M_PI', rpn_class::TYPE_XSTRING);
-            } elseif ($op == 'E') {
+            } elseif ($op == 'e') {
                 return  new operand( 'M_E', rpn_class::TYPE_XSTRING);
-            } elseif ($op == 'TAN') {
+            } elseif ($op == 'tan') {
                 return  new operand( sprintf('tan(%s)', call_user_func($evaluate, $_2[0])), rpn_class::TYPE_XSTRING);
-            } elseif ($op == 'ABS') {
+            } elseif ($op == 'abs') {
                 return  new operand(sprintf('abs(%s)', call_user_func($evaluate, $_2[0])), rpn_class::TYPE_XSTRING);
-            } elseif ($op == 'SIN') {
+            } elseif ($op == 'sin') {
                 return new operand(sprintf('sin(%s)', call_user_func($evaluate, $_2[0])), rpn_class::TYPE_XSTRING);
-            } elseif ($op == 'X') {
+            } elseif ($op == 'x') {
                 return new operand('$x', rpn_class::TYPE_XSTRING);
-            } elseif ($op == 'COS') {
+            } elseif ($op == 'cos') {
                 return new operand(sprintf('cos(%s)', call_user_func($evaluate, $_2[0])), rpn_class::TYPE_XSTRING);
-            } elseif ($op == 'TIME') {
+            } elseif ($op == 'time') {
                 return new operand('time()', rpn_class::TYPE_XSTRING);
             } else {
                 $r->error('unknown operation ' . $op);

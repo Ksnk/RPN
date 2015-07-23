@@ -46,7 +46,9 @@ $this->macro['{{ m }}']=array($this,'_{{ m }}');
 ##  преобразование OPERAND в SENTENCE
 ##
 {%- block sentence -%}
+    {% if data!='' and data!='""' and data!="''"  %}
     $result.={{ data }};
+    {% endif %}
 {%- endblock -%}
 
 ####################################################################
@@ -72,7 +74,7 @@ $this->macro['{{ m }}']=array($this,'_{{ m }}');
 ## представление тега FOR
 ##
 {%- block for -%}
-    $loop{{ loopdepth }}_array=ps({{ in }});
+    $loop{{ loopdepth }}_array={{ in | default('array()') }};
     {% if loop_index -%}
         $loop{{ loopdepth }}_index=0;
     {% endif %}
@@ -94,7 +96,8 @@ $this->macro['{{ m }}']=array($this,'_{{ m }}');
     {% if loop_revindex %}    $loop{{ loopdepth }}_revindex--;
     {% endif %}
     {{ body }}
-    }}
+    }
+    }
     {% if else %}
         else {
         {{ else }}
@@ -118,29 +121,41 @@ $this->macro['{{ m }}']=array($this,'_{{ m }}');
 {%- block block -%}
     {% if name %}
         {% if tag=='macros' %}
-            function _{{ name }}(&$namedpar
+function _{{ name }}(&$namedpar
             {%- for p in param %},${{ p.name }}{% if p.value %}={{ p.value }}{% else %}=0{% endif %}{% endfor -%}){
-            extract($namedpar);             {#- #}
+            extract($namedpar);$result="";             {#- #}
         {% else %}
-            function _{{ name }}(&$par){
+function _{{ name }}(&$par){
+                $result="";
         {% endif %}
     {% endif %}
+    {% set str_is_last = 0 %} ## !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
     {% for blk in data %}
-        {% if blk.string %}
-            {% set xxx=blk.string|join('
-    .') %}
-            {% if loop.first and name %}
-                $result={{ xxx }};
-            {% elseif xxx!="''" %}
-                $result.={{ xxx }};
+        {% if not str_is_last and (blk.type==5 or blk.type==1) and blk.val!="''" and blk.val!='""' %}
+            $result.=
+            {%- set str_is_last=1  %}
+        {% endif %}
+        {% if blk.type==5 or blk.type==1 %}
+            {% if blk.val != '""' and blk.val != "''" %}
+                {%- if str_is_last > 1%}
+            . {% endif %}
+                {% set str_is_last=str_is_last+1 %}
+                {{- blk.val -}}
             {% endif %}
         {% else %}
-            {{ blk.data }};
+            {% if str_is_last -%};
+
+            {% endif %}
+            {% set str_is_last = 0 %}
+            {{ blk.val }};
         {% endif %}
+
     {%- endfor %}
+    {% if str_is_last %};
+    {% endif %}
     {% if name %}
-        return $result;
-        }
+return $result;
+}
     {% endif %}
 {%- endblock -%}
 

@@ -15,44 +15,45 @@ set_error_handler(function ($c, $m /*, $f, $l*/) {
 }, E_ALL & ~E_NOTICE);
 
 $r->option(array(
-    'flags'=>0
+    'flags'=>0/**/+rpn_class::SHOW_DEBUG+rpn_class::SHOW_ERROR
         +rpn_class::ALLOW_REAL
 ,
     'operation' => ['+' => 4, '-' => 4, '*' => 5, '/' => 5, '^' => 7,],
     'suffix' => ['%' => 1],
     'unop' => ['-' => 1, '+' => 1],
-    'reserved_words' => ['PI' => 0, 'E' => 0,
-        'ABSOLUTE' => 1,
-        'ARCCOS' => 1,
-        'ARCCOSH' => 1,
-        'ARCSIN' => 1,
-        'ARCSINH' => 1,
-        'ARCTAN' => 1,
-        'ARCTANH' => 1,
-        'EXP' => 1,
-        'FLOOR' => 1,
-        'LOG' => 1,
-        'LN' => 1,
-        'SIGN' => 1,
-        'SIN' => 1,
-        'COS' => 1,
-        'SINH' => 1,
-        'COSH' => 1,
-        'SQRT' => 1,
-        'SQR' => 1,
-        'TAN' => 1,
-        'TANH' => 1,
-        'CBRT' => 1,
-        'POW' => 2,
-        'SUMM' => -1,
+    'reserved_words' => ['pi' => 0, 'e' => 0,
+        'absolute' => 1,
+        'arccos' => 1,
+        'arccosh' => 1,
+        'arcsin' => 1,
+        'arcsinh' => 1,
+        'arctan' => 1,
+        'arctanh' => 1,
+        'exp' => 1,
+        'floor' => 1,
+        'log' => 1,
+        'ln' => 1,
+        'sign' => 1,
+        'sin' => 1,
+        'cos' => 1,
+        'sinh' => 1,
+        'cosh' => 1,
+        'sqrt' => 1,
+        'sqr' => 1,
+        'tan' => 1,
+        'tanh' => 1,
+        'cbrt' => 1,
+        'pow' => 2,
+        'summ' => -1,
     ],
 
     'evaluateTag' => function ($op) use ($r) {
+            /** @var operand|null $op */
             $r->log('eval:' . (is_numeric($op) && is_nan($op) ? 'NaN' : json_encode($op)));
             if (!is_a($op,'operand'))
                 $result = $op;
             else {
-                $result = 0 + $op->val; // явное преобразование к числу
+                $result = 0 + (double)$op->val; // явное преобразование к числу
             }
             return $result;
         },
@@ -80,54 +81,54 @@ $r->option(array(
             } else if ($op == '%' && $op->unop) {
                 $_2->val=call_user_func($evaluate, $_2);$_2->percent=1;
                 return $_2;
-            } elseif ($op == 'PI') {
-                return pi();
-            } elseif ($op == 'E') {
-                return M_E;
-            } elseif ($op == 'ABSOLUTE') {
+            } elseif ($op == 'pi') {
+                return  pi();
+            } elseif ($op == 'e') {
+                return  M_E;
+            } elseif ($op == 'absolute') {
                 return abs(call_user_func($evaluate, $_2[0]));
-            } elseif ($op == 'ARCCOS') {
+            } elseif ($op == 'arccos') {
                 return acos(call_user_func($evaluate, $_2[0]));
-            } elseif ($op == 'ARCCOSH') {
+            } elseif ($op == 'arccosh') {
                 return acosh(call_user_func($evaluate, $_2[0]));
-            } elseif ($op == 'ARCSIN') {
+            } elseif ($op == 'arcsin') {
                 return asin(call_user_func($evaluate, $_2[0]));
-            } elseif ($op == 'ARCSINH') {
+            } elseif ($op == 'arcsinh') {
                 return asinh(call_user_func($evaluate, $_2[0]));
-            } elseif ($op == 'ARCTAN') {
+            } elseif ($op == 'arctan') {
                 return atan(call_user_func($evaluate, $_2[0]));
-            } elseif ($op == 'ARCTANH') {
+            } elseif ($op == 'arctanh') {
                 return atanh(call_user_func($evaluate, $_2[0]));
-            } elseif ($op == 'EXP') {
+            } elseif ($op == 'exp') {
                 return exp(call_user_func($evaluate, $_2[0]));
-            } elseif ($op == 'POW') {
+            } elseif ($op == 'pow') {
                 return pow(call_user_func($evaluate, $_2[0]),call_user_func($evaluate, $_2[1]));
-            } elseif ($op == 'FLOOR') {
+            } elseif ($op == 'floor') {
                 return floor(call_user_func($evaluate, $_2[0]));
-             } elseif ($op == 'LOG' || $op == 'LN') {
+             } elseif ($op == 'log' || $op == 'ln') {
                 return log(call_user_func($evaluate, $_2[0]));
-            } elseif ($op == 'SIGN') {
+            } elseif ($op == 'sign') {
                 $number = call_user_func($evaluate, $_2[0]);
                 return $number ? abs($number) / $number : 0;
-            } elseif ($op == 'SIN') {
+            } elseif ($op == 'sin') {
                 return sin(call_user_func($evaluate, $_2[0]));
-            } elseif ($op == 'COS') {
+            } elseif ($op == 'cos') {
                 return cos(call_user_func($evaluate, $_2[0]));
-            } elseif ($op == 'SINH') {
+            } elseif ($op == 'sinh') {
                 return sinh(call_user_func($evaluate, $_2[0]));
-            } elseif ($op == 'COSH') {
+            } elseif ($op == 'cosh') {
                 return cosh(call_user_func($evaluate, $_2[0]));
-            } else if ($op == 'SQRT') {
+            } else if ($op == 'sqrt') {
                 return sqrt(call_user_func($evaluate, $_2[0]));
-            } else if ($op == 'SQR') {
+            } else if ($op == 'sqr') {
                 return pow(call_user_func($evaluate, $_2[0]), 2);
-            } elseif ($op == 'TAN') {
+            } elseif ($op == 'tan') {
                 return tan(call_user_func($evaluate, $_2[0]));
-            } elseif ($op == 'TANH') {
+            } elseif ($op == 'tanh') {
                 return tanh(call_user_func($evaluate, $_2[0]));
-            } elseif ($op == 'CBRT') {
+            } elseif ($op == 'cbrt') {
                 return pow(call_user_func($evaluate, $_2[0]), 1 / 3);
-            } elseif ($op == 'SUMM') {
+            } elseif ($op == 'summ') {
                 $result=0;
                 foreach($_2 as $x){
                     $result+=call_user_func($evaluate, $x);

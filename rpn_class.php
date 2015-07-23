@@ -33,7 +33,8 @@ class rpn_class
     , TYPE_LIST = 17
     , TYPE_SLICE = 18
     , TYPE_STRATCH = 19
-    , TYPE_CALL = 20;
+    , TYPE_CALL = 20
+    ;
 
     static $char2class = array(
         'B' => self::TYPE_XBOOLEAN,
@@ -49,18 +50,19 @@ class rpn_class
      * флаги инициализации класса
      */
     const
-        THROW_EXCEPTION_ONERROR = 1, // выкинуть exception в случае ошибки
-        // STOP_ONERROR = 2, // не пригодился
-        SHOW_ERROR = 4, // выводить в лог ошибки
-        SHOW_DEBUG = 8, // выводить в лог отладку
-        EMPTY_FUNCTION_ALLOWED = 16 // допускается автоматическое дописывание пустой функции между операторами
+        THROW_EXCEPTION_ONERROR = 1 // выкинуть exception в случае ошибки
+    //,    STOP_ONERROR = 2 // не пригодился
+    ,   SHOW_ERROR = 4 // выводить в лог ошибки
+    ,   SHOW_DEBUG = 8 // выводить в лог отладку
+    ,   EMPTY_FUNCTION_ALLOWED = 16 // допускается автоматическое дописывание пустой функции между операторами
 
-    , ALLOW_STRINGS = 32 // допускаются операнды  - строки
-    , ALLOW_REAL = 64 // допускаются операнды - вещественные числа.
-    , ALLOW_ID = 128 // допускаются операнды - неведомые идентификаторы
-    , ALLOW_COMMA = 256 // допускаются неописанные знаки препинания (,;)
-    , ALLOW_DOTSTRATCH = 512 // вырезка из массива точкой
-    , CASE_SENCITIVE = 1024;
+    ,   ALLOW_STRINGS = 32 // допускаются операнды  - строки
+    ,   ALLOW_REAL = 64 // допускаются операнды - вещественные числа.
+    ,   ALLOW_ID = 128 // допускаются операнды - неведомые идентификаторы
+    ,   ALLOW_COMMA = 256 // допускаются неописанные знаки препинания (,;)
+    ,   ALLOW_DOTSTRATCH = 512 // вырезка из массива точкой
+    ,   CASE_SENCITIVE = 1024
+    ;
     /**
      * место для хранения композиции из флагов
      * @var int
@@ -337,7 +339,6 @@ class rpn_class
             return $this->currenttag = array_shift($this->tag_stack);
         }
         $tag = false;
-        $type = 0;
         $this->getcode();
         if (preg_match($this->sintaxreg, $this->code, $m, PREG_OFFSET_CAPTURE, $this->start)) {
             // $this->log('found:'.json_encode($m).$this->start);
@@ -349,7 +350,8 @@ class rpn_class
             $type = $this->types[$k];
             $tag = $m[$k][0];
             if ($type == 0)
-                foreach ($this->types as $k => $v) if ($k < count($m)) {
+                for ($k=0;$k < count($m);$k++) {
+                    $v=$this->types[$k];
                     if (0 != $v) {
                         if ("" !== $m[$k][0]) {
                             $type = $v;
@@ -669,12 +671,7 @@ class rpn_class
     {
         $arr = array();
         $keys = array();
-        $depth = 0;
-        if (!empty($this->storeparams)) {
-            $keys[] = $this->popOp();
-            $arr[] = null;
-            $this->storeparams = false;
-        }
+
         do {
             $this->getNext();
             if (in_array($this->currenttag->type, array(rpn_class::TYPE_ID /*,rpn_class::TYPE_STRING3*/))) { //todo:! Сделать string3
@@ -728,6 +725,7 @@ class operand
     , $unop
     , $call
     , $parcount
+    , $depth
     , $prio;
 
     function __set($name, $val)

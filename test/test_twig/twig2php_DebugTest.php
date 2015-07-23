@@ -53,25 +53,32 @@ class twig2php_DebugTest extends PHPUnit_Framework_TestCase
     }
 
     function compilerX($src,$par=array(),$method='_'){
-        static $cnt=0;
+        static $cnt=0,$r=null;
+        if(is_null($r))$r= new twig2php_class();
         $cnt++;
-        $r= new twig2php_class();
+        //$r= new twig2php_class();
         $fp = fopen("php://memory", "w+b");
         fwrite($fp, $src);//1024));
         rewind($fp);
         $r->handler=$fp;
         $res=''.$r->ev(array('tplcalc','compiler','test'.$cnt));
+        $errors=$r->error();
+        if($errors) print_r($errors);
         eval('?>'. $res);
         $classname='tpl_test'.$cnt;
         //echo $data;
         fclose($fp);
         if(class_exists($classname)) {
             $base= new $classname();
-            return $base->$method($par);
+            $x=$base->$method($par);
+            return $x;
         } else
             return '';
     }
 
+    /**
+     * условное предложение, вырезка из массива
+     */
 
 
 

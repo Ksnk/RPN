@@ -51,14 +51,15 @@ class twig2php_Test extends PHPUnit_Framework_TestCase
 
     function compress($s)
     {
-        return preg_replace('/\s+/s', ' ', $s);
+        return preg_replace('/\s+/s', ' ', trim($s));
     }
 
     function compilerX($src,$par=array(),$method='_'){
-        static $cnt=0;
+        static $cnt=0,$r=null;
+        if(is_null($r))$r= new twig2php_class();
         $this->errors=false;
         $cnt++;
-        $r= new twig2php_class();
+        //$r= new twig2php_class();
         $fp = fopen("php://memory", "w+b");
         fwrite($fp, $src);//1024));
         rewind($fp);
@@ -72,7 +73,8 @@ class twig2php_Test extends PHPUnit_Framework_TestCase
         fclose($fp);
         if(class_exists($classname)) {
             $base= new $classname();
-            return $base->$method($par);
+            $x=$base->$method($par);
+            return $x;
         } else
             return '';
     }
@@ -212,10 +214,10 @@ class twig2php_Test extends PHPUnit_Framework_TestCase
         $s = '
     {% extends "test.php"%}
     {% block test %} <table>
-        {% for x in [1,2] -%}
+        {% for x in [1,2] %}
         <tr class="{{loop.cycle(\'odd\',\'even\')}}"><td>{{x}}</td><td>
         one</td><td>two</td></tr>
-        {% endfor -%}
+        {% endfor %}
         </table> {{parent()}}{% endblock %}
         {{test()}} ';
         $pattern = ' <table>
@@ -355,6 +357,23 @@ class twig2php_Test extends PHPUnit_Framework_TestCase
     {{ item }}
 {%- endfor %}';
         $pattern = 'on\\e\'s on\\e\'s one"s one"s ';
+        $this->assertEquals(
+            $this->compilerX($s, $data), $pattern
+        );
+    }
+
+    function test_test101()
+    {
+        $data = array();
+        //$data=array('users'=>array(array('username'=>'one'),array('username'=>'two')));
+        $s = '{#
+        it\'s a test
+        #}
+
+        {%- for item in ["a".."f",1..9] -%}
+    {{ item }}
+{%- endfor %}';
+        $pattern = 'abcdef123456789';
         $this->assertEquals(
             $this->compilerX($s, $data), $pattern
         );
@@ -811,7 +830,7 @@ class twig2php_Test extends PHPUnit_Framework_TestCase
     }
 
     /**
-     *  2 ошибки.
+     * 2 ошибки.
      * поставить = вместо ==
      * закомментировать endif
      */
@@ -864,5 +883,96 @@ class twig2php_Test extends PHPUnit_Framework_TestCase
         );
     }
 
+    function test34 (){
+        $data = array(
+            'src' => 'xxx',
+            'list' => array('xxx' => 1027),
+            'years' =>array(2014,2015)
+        );
+        $s=<<<EEE
+##
+## заголовок станицы reviews
+##
+{% macro header (src,list,years) %}
+{% set months=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь']
+    %}
+<div style="display:block; width:720px; margin: 0 auto; border: 1px solid gray; border-radius: 8px; background: #f4f4f7; /* Old browsers */
+    background: -moz-linear-gradient(top, #f4f4f7 0%, #ffffff 100%); /* FF3.6+ */
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#f4f4f7), color-stop(100%,#ffffff)); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(top, #f4f4f7 0%,#ffffff 100%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(top, #f4f4f7 0%,#ffffff 100%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(top, #f4f4f7 0%,#ffffff 100%); /* IE10+ */
+    background: linear-gradient(to bottom, #f4f4f7 0%,#ffffff 100%); /* W3C */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f4f4f7', endColorstr='#ffffff',GradientType=0 );">
+    <table><tr><td>
+        {% for year in years %}
+        <div>
+            <div style="width:45px; padding-top:5px; padding-bottom:5px; padding-left:5px; text-align:left; float:left;">{{ year }}</div>
+            <div style="width:670px; padding-top:5px; padding-bottom:5px; float:right;">
+                {% for m in [1..12] %}
+                    {% if not loop.first %}/{% endif -%}
+                    <a href="/content/articles/reviews.php?year={{ year}}&month={{ m }}{% if src and src!='all' %}&src={{ src }}{% endif %}">{{ months[m-1] }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </td></tr></table>
+    </div>
+    <br />
+
+    <h2 style="text-align:left; color:#2B709F; margin-left:20px; font-weight:bold; font-size:18px;">Отзывы покупателей за июль 2012</h2>
+<div style="text-align:left; margin-left:20px; margin-top:10px;">
+    {%- for key,val in list %}
+        {%- if src==key %}<span class="bold">{{ val }}</span>
+        {%- else %}<a href="{% if key and key!='all' %}?src={{ key }}{% else %}?{% endif %}">{{ val }}</a>
+        {%- endif %}
+        {%- if not loop.last %}/{% endif %}
+    {%- endfor -%}
+</div><br />
+{% endmacro %}
+EEE;
+        $pattern = <<<XXX
+
+<div style="display:block; width:720px; margin: 0 auto; border: 1px solid gray; border-radius: 8px; background: #f4f4f7; /* Old browsers */
+    background: -moz-linear-gradient(top, #f4f4f7 0%, #ffffff 100%); /* FF3.6+ */
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#f4f4f7), color-stop(100%,#ffffff)); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(top, #f4f4f7 0%,#ffffff 100%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(top, #f4f4f7 0%,#ffffff 100%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(top, #f4f4f7 0%,#ffffff 100%); /* IE10+ */
+    background: linear-gradient(to bottom, #f4f4f7 0%,#ffffff 100%); /* W3C */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f4f4f7', endColorstr='#ffffff',GradientType=0 );">
+    <table><tr><td>
+        <div>
+            <div style="width:45px; padding-top:5px; padding-bottom:5px; padding-left:5px; text-align:left; float:left;">2014</div>
+            <div style="width:670px; padding-top:5px; padding-bottom:5px; float:right;"><a href="/content/articles/reviews.php?year=2014&month=1&src=xxx">январь</a>/<a href="/content/articles/reviews.php?year=2014&month=2&src=xxx">февраль</a>/<a href="/content/articles/reviews.php?year=2014&month=3&src=xxx">март</a>/<a href="/content/articles/reviews.php?year=2014&month=4&src=xxx">апрель</a>/<a href="/content/articles/reviews.php?year=2014&month=5&src=xxx">май</a>/<a href="/content/articles/reviews.php?year=2014&month=6&src=xxx">июнь</a>/<a href="/content/articles/reviews.php?year=2014&month=7&src=xxx">июль</a>/<a href="/content/articles/reviews.php?year=2014&month=8&src=xxx">август</a>/<a href="/content/articles/reviews.php?year=2014&month=9&src=xxx">сентябрь</a>/<a href="/content/articles/reviews.php?year=2014&month=10&src=xxx">октябрь</a>/<a href="/content/articles/reviews.php?year=2014&month=11&src=xxx">ноябрь</a>/<a href="/content/articles/reviews.php?year=2014&month=12&src=xxx">декабрь</a>
+            </div>
+        </div>
+        <div>
+            <div style="width:45px; padding-top:5px; padding-bottom:5px; padding-left:5px; text-align:left; float:left;">2015</div>
+            <div style="width:670px; padding-top:5px; padding-bottom:5px; float:right;"><a href="/content/articles/reviews.php?year=2015&month=1&src=xxx">январь</a>/<a href="/content/articles/reviews.php?year=2015&month=2&src=xxx">февраль</a>/<a href="/content/articles/reviews.php?year=2015&month=3&src=xxx">март</a>/<a href="/content/articles/reviews.php?year=2015&month=4&src=xxx">апрель</a>/<a href="/content/articles/reviews.php?year=2015&month=5&src=xxx">май</a>/<a href="/content/articles/reviews.php?year=2015&month=6&src=xxx">июнь</a>/<a href="/content/articles/reviews.php?year=2015&month=7&src=xxx">июль</a>/<a href="/content/articles/reviews.php?year=2015&month=8&src=xxx">август</a>/<a href="/content/articles/reviews.php?year=2015&month=9&src=xxx">сентябрь</a>/<a href="/content/articles/reviews.php?year=2015&month=10&src=xxx">октябрь</a>/<a href="/content/articles/reviews.php?year=2015&month=11&src=xxx">ноябрь</a>/<a href="/content/articles/reviews.php?year=2015&month=12&src=xxx">декабрь</a>
+            </div>
+        </div>
+    </td></tr></table>
+    </div>
+    <br />
+
+    <h2 style="text-align:left; color:#2B709F; margin-left:20px; font-weight:bold; font-size:18px;">Отзывы покупателей за июль 2012</h2>
+<div style="text-align:left; margin-left:20px; margin-top:10px;"><span class="bold">1027</span></div><br />
+XXX;
+        $this->assertEquals(
+            $this->compilerX($s, $data, '_header'), $pattern
+        );
+    }
+
+    /**
+     * длинный текст c чисткой пробелов
+     */
+    function testCreateAndRun0()
+    {
+        $src=str_repeat('
+',1024*106).'{{- hello -}}'.str_repeat('
+',1024*106);
+        $this->assertEquals($this->compilerX($src,array('hello'=>'Ok')), 'Ok');
+    }
 }
 
