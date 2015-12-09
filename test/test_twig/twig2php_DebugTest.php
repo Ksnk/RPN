@@ -76,11 +76,14 @@ class twig2php_DebugTest extends PHPUnit_Framework_TestCase
             return '';
     }
 
-    /**
-     * условное предложение, вырезка из массива
-     */
-
-
+    function test_test334(){
+        $s='<tr style="border:none;"><td colspan="{{ colspan -2}}" height="10"></td></tr>';
+        $data = array('main' => $GLOBALS['engine'], 'colspan' => '10');
+        $pattern = '<tr style="border:none;"><td colspan="8" height="10"></td></tr>';
+        $this->assertEquals(
+            $this->compilerX($s, $data), $pattern
+        );
+    }
 
     /**
      * Тестовая функция для проверки логического модуля

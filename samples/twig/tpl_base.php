@@ -43,6 +43,17 @@ class tpl_base
     }
 
     /**
+     * прокерка по регулярке
+     * @param $s
+     * @param $reg
+     * @return string
+     */
+    function func_reg($s,$reg)
+    {
+       // ENGINE::debug($reg,$s,preg_match($reg,$s));
+        return !!preg_match($reg,$s);
+    }
+    /**
      * дополнить русские числительные
      * @param mixed $n
      * @param string $one - пользователь
@@ -79,7 +90,10 @@ class tpl_base
      */
     function func_replace($n, $search = '', $replace = '')
     {
-        return str_replace($search, $replace, $n);
+        if($search && $search{0}=='/')
+            return preg_replace($search, $replace, $n);
+        else
+            return str_replace($search, $replace, $n);
     }
 
     /**
@@ -163,12 +177,12 @@ Pellentesque dictum scelerisque urna, sed porta odio venenatis ut. Integer aucto
         }
         $s = trim(preg_replace('~\s+|&nbsp;~', ' ', strip_tags($s)));
         if ($killwords) {
-            if (strlen($s) > $length)
-                return substr($s, 0, $length) . $end;
+            if (mb_strlen($s,'UTF-8') > $length)
+                return mb_substr($s, 0, $length,'UTF-8') . $end;
             return $s;
         }
-        if (strlen($s) > $length)
-            return substr($s, 0, $length) . $end;
+        if (mb_strlen($s,'UTF-8') > $length)
+            return mb_substr($s, 0, $length,'UTF-8') . $end;
         return $s;
     }
 
@@ -365,7 +379,7 @@ Pellentesque dictum scelerisque urna, sed porta odio venenatis ut. Integer aucto
 
     /**
      * Хелпер для циклов.
-     * @param unknown_type $loop_array
+     * @param array $loop_array
      * @return mixed|string
      */
     function loopcycle(&$loop_array)

@@ -72,7 +72,11 @@ class rpn_class
     /**
      * массив операций, суффиксов и унарных. По нему будем строить регулярку
      */
-    protected $operation = array(); // операции, которе могут стоять на месте операций
+    protected $operation = array( // злые люди обязательно забудут про скобочки
+        ')' => 0,
+        '(' => -1,
+        ',' => -1,
+    ); // операции, которе могут стоять на месте операций
     protected $func = array(); // могут стоять на месте операндов
     protected $suffix = array();
     protected $unop = array();
@@ -151,16 +155,16 @@ class rpn_class
      * @param $mess
      * @return array
      */
-    public function error($mess = null)
+    public function error($mess = null,$op=null)
     {
         if (is_null($mess))
             return $this->errors;
 
-        $this->errors[] = $mess;
         if (0 != ($this->flags & self::THROW_EXCEPTION_ONERROR)) {
             $ex = $this->exception_class_name;
             throw new $ex($mess);
         };
+        $this->errors[] = $mess;
         if (0 != ($this->flags & self::SHOW_ERROR)) {
             echo "\n" . $mess . '<br />';
         }
@@ -302,8 +306,9 @@ class rpn_class
         if ($unop) {
             $op->unop = 1;
         }
-        if (!$op->prio)
+        if (!$op->prio){
             $op->prio = $unop ? 10 : $this->operation[$op->val];
+        }
         if ($op->val == '(') {
             $op->depth = count($this->syntax_tree);
         }
@@ -376,7 +381,7 @@ class rpn_class
     /**
      * транслируем в обратную польскую форму
      * @param array $stopwords
-     * @return array
+     * @return operand
      */
     function getExpression($stopwords = array())
     {
@@ -417,6 +422,7 @@ class rpn_class
                         //$num=$this->get_Comma_separated_list();
                         if ($this->currenttag->val != ']')
                             $this->error('missed ]');
+
                         $this->syntax_tree[] = $xop;
                         if (!$place_operand) { // вырезка из массива
                             $this->syntax_tree[] = $this->oper('_scratch_', rpn_class::TYPE_OPERATION);
@@ -427,14 +433,21 @@ class rpn_class
                         break 2;
                     case ']':
                         break 2;
+                    case ';':
+                        break 2;
                     case ',':
                         break 2;
                     default:
                         if ($tag->val === '' && $tag->type == rpn_class::TYPE_NONE) {
                             break;
                         }
-
-                        if (isset($this->reserved_words[$tag->val])) {
+                        if ($tag->type==rpn_class::TYPE_STRING){
+                                if (!$place_operand && (0 != (self::EMPTY_FUNCTION_ALLOWED & $this->flags))) { // если операции нет - савим пустую операцию
+                                    $this->pushop('_EMPTY_');
+                                }
+                                $this->syntax_tree[] = $tag;
+                                $place_operand = false;
+                        } else if (isset($this->reserved_words[$tag->val])) {
                             if ($this->reserved_words[$tag->val] == -2) {
                                 // стоп-слово
                                 break 2;

@@ -168,6 +168,15 @@ class twig2php_Test extends PHPUnit_Framework_TestCase
         );
     }
 
+    function test_test334(){
+        $s='<tr style="border:none;"><td colspan="{{ colspan -2}}" height="10"></td></tr>';
+        $data = array('main' => $GLOBALS['engine'], 'colspan' => '10');
+        $pattern = '<tr style="border:none;"><td colspan="8" height="10"></td></tr>';
+        $this->assertEquals(
+            $this->compilerX($s, $data), $pattern
+        );
+    }
+
     /** test extends-parent  */
 
     function test_test27()

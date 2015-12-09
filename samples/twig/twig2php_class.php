@@ -1,4 +1,5 @@
 <?php
+
 /**
  * PHP twig-templates translator.
  * <%=point('hat','jscomment');
@@ -8,26 +9,21 @@
  *
  * %>
  */
-
-function pps(&$x, $default = '')
-{
-    if (empty($x)) return $default; else return $x;
-}
-
 class twig2php_class extends rpn_class
 {
     const
         TYPE_SENTENSE = 101,
         TYPE_LITERAL = 102;
 
-    const BUFLEN= 1024;
+    const BUFLEN = 1024;
 
     var $filename = '',
-        $handler='',
+        $handler = '',
         /** состояние сборщика лексем getnext */
-        $state=0,
+        $state = 0,
+        $lines = array(),
 
-        $BLOCK_START='{%',
+        $BLOCK_START = '{%',
         $BLOCK_END = '%}',
         $BLOCK_XEND = '-%}',
         $VARIABLE_START = '{{',
@@ -38,7 +34,7 @@ class twig2php_class extends rpn_class
         $COMMENT_XEND = '-#}', // todo: временно, пока не справлюсь с минусом в этом месте
         $COMMENT_LINE = '##',
         $trim = true,
-        $COMPRESS_START_BLOCK =true;
+        $COMPRESS_START_BLOCK = true;
 
     /**
      * Масив для хранения упрощенных способов трансляции конструкции
@@ -54,7 +50,7 @@ class twig2php_class extends rpn_class
         /** var operand[] */
         $opensentence = array(); // комплект открытых тегов, для портирования
 
-    var $trim_state=0;
+    var $trim_state = 0;
 
 
     protected
@@ -66,31 +62,33 @@ class twig2php_class extends rpn_class
         $currentFunction = '', // имя текущей функции block или macro
         //для корректной работы parent()
         /** @var string - скрипт для выполнения */
-        $script;
+        $script,
+        $tpl_compiler=null;
 
     function __construct($options = array())
     {
         // parent::__construct();
-        $opt=array(
+        $opt = array(
             'flags' => 0 //**/+self::SHOW_DEBUG+self::SHOW_ERROR
                 + self::ALLOW_STRINGS
                 + self::ALLOW_REAL
                 + self::ALLOW_ID
                 + self::ALLOW_COMMA
                 + self::ALLOW_DOTSTRATCH
-     //           + self::CASE_SENCITIVE
+          //      + self::THROW_EXCEPTION_ONERROR
+            //           + self::CASE_SENCITIVE
         ,
-            'reserved_words'=>array('for'=>-2,'set'=>-2,'if'=>-2),
+            'reserved_words' => array('endif'=>-2,'elseif' => -2,'elif' => -2,'for' => -2, 'set' => -2, 'if' => -2),
             'evaluateTag' => array($this, '_calcOpr'),
             'executeOp' => array($this, '_calcOp'));
 
-        $opt['reserved_words'][$this->BLOCK_END]=-2;
-        $opt['reserved_words'][$this->BLOCK_XEND]=-2;
-        $opt['reserved_words'][$this->VARIABLE_END]=-2;
-        $opt['reserved_words'][$this->VARIABLE_XEND]=-2;
-        $opt['reserved_words'][$this->COMMENT_START]=-2;
-        $opt['reserved_words'][$this->COMMENT_LINE]=-2;
-       // $opt['reserved_words']['_triml_']=0;
+        $opt['reserved_words'][$this->BLOCK_END] = -2;
+        $opt['reserved_words'][$this->BLOCK_XEND] = -2;
+        $opt['reserved_words'][$this->VARIABLE_END] = -2;
+        $opt['reserved_words'][$this->VARIABLE_XEND] = -2;
+        $opt['reserved_words'][$this->COMMENT_START] = -2;
+        $opt['reserved_words'][$this->COMMENT_LINE] = -2;
+        // $opt['reserved_words']['_triml_']=0;
 
         $this->option($opt);
         $this->option($options);
@@ -110,7 +108,7 @@ class twig2php_class extends rpn_class
             ->newOp2('and', 1, '(%s) && (%s)', 'BBB')
             ->newOp2('or', 1, '(%s) || (%s)', 'BBB')
             ->newOp2('~', 2, '(%s).(%s)', 'SSS')
-            ->newOp1('not', '!(%s)', 'BB',1)
+            ->newOp1('not', '!(%s)', 'BB', 1)
             ->newOp2('& << >>', 3)
             // однопараметровые фильтры
             // ну очень служебные функции
@@ -148,50 +146,44 @@ class twig2php_class extends rpn_class
             ->newFunc('date', '$this->func_date(%s)')
             ->newFunc('finnumb', '$this->func_finnumb(%s)')
             ->newFunc('right', '$this->func_rights(%s)')
+            ->newFunc('reg', '$this->func_reg(%s)')
             ->newFunc('russuf', '$this->func_russuf(%s)')
             ->newFunc('in_array', '$this->func_in_array(%s)')
             ->newFunc('is_array', '$this->func_is_array(%s)')
             // ->newFunc('parent', 'parent::_styles(%s)')
             ->newFunc('parent', array($this, 'function_parent'))
             ->newFunc('debug', 'ENGINE::debug(%s)')
-            ->newOpr('loop', array($this, 'operand_loop'))
-           // ->newOp1('_echo_', array($this, '_echo_'))
+            ->newOpr('loop', array($this, 'operand_loop'))// ->newOp1('_echo_', array($this, '_echo_'))
         ;
     }
 
-/*    function popOp(){
-        if(count($this->syntax_tree))
-            return array_pop($this->syntax_tree);
-        else
-            return false;
-    }*/
-
     protected function execOp($op, $_1, $_2, $unop = false)
     {
-        if($op->unop && method_exists($this,$op->val)){
-            return call_user_func(array($this,$op->val),$_2,$op);
+        if ($op->unop && method_exists($this, $op->val)) {
+            return call_user_func(array($this, $op->val), $_2, $op);
         }
-        if(!$op->unop && method_exists($this,$op->val)){
-            return call_user_func(array($this,$op->val),$_1,$_2);
+        if (!$op->unop && method_exists($this, $op->val)) {
+            return call_user_func(array($this, $op->val), $_1, $_2);
         }
         if (!$op->unop && isset($this->pattern[$op->val])) {
             $op = $this->pattern[(string)$op];
-            if(is_array($op->val)&& is_callable($op->val)){
-                return call_user_func($op->val,$_1,$_2);
+            if (is_array($op->val) && is_callable($op->val)) {
+                return call_user_func($op->val, $_1, $_2);
             }
 
             $type = $op->types;
-            return $this->oper(sprintf($op->val, $this->to($type{1},$_1 ), $this->to($type{2},$_2)), self::$char2class[$type{0}]);
+            return $this->oper(sprintf($op->val, $this->to($type{1}, $_1), $this->to($type{2}, $_2)), self::$char2class[$type{0}]);
         }
         if ($op->unop && isset($this->unop[$op->val])) {
             $op = $this->unop[$op->val];
-            if(is_array($op->val)&& is_callable($op->val)){
-                return call_user_func($op->val,$_2);
+            if (is_array($op->val) && is_callable($op->val)) {
+                return call_user_func($op->val, $_2);
             }
 
             $type = $op->types;
-            return $this->oper(sprintf($op->val, $this->to($type{1},$_2)), self::$char2class[$type{0}]);
+            return $this->oper(sprintf($op->val, $this->to($type{1}, $_2)), self::$char2class[$type{0}]);
         }
+        return null;
     }
 
     protected function execTag($op, $type = '*')
@@ -219,9 +211,9 @@ class twig2php_class extends rpn_class
         $op = strtolower($op);
         if ($prio < 10 || !isset($this->operation[$op])) $this->operation[$op] = $prio;
         if (is_string($phpeq)) {
-            $array[$op] = $this->oper(str_replace('~~~', str_replace('%', '%%', $op), $phpeq),array('prio'=>$prio,'types' => $types . '****'));
+            $array[$op] = $this->oper(str_replace('~~~', str_replace('%', '%%', $op), $phpeq), array('prio' => $prio, 'types' => $types . '****'));
         } else {
-            $array[$op] = $this->oper($phpeq,array('prio'=>$prio,'types' => $types . '****'));
+            $array[$op] = $this->oper($phpeq, array('prio' => $prio, 'types' => $types . '****'));
         }
         return $this;
     }
@@ -269,9 +261,10 @@ class twig2php_class extends rpn_class
      * @param int $prio
      * @return twig2php_class
      */
-    function &newOp1($op, $phpeq = null, $types = '*',$prio=10)
+    function &newOp1($op, $phpeq = null, $types = '*', $prio = 10)
     {
-        return $this->new_Op($op, $prio, $this->unop, pps($phpeq, '~~~(%s)'), $types);
+        if (is_null($phpeq)) $phpeq = '~~~(%s)';
+        return $this->new_Op($op, $prio, $this->unop, $phpeq, $types);
     }
 
     /**
@@ -284,44 +277,46 @@ class twig2php_class extends rpn_class
      */
     function &newOp2($op, $prio = 10, $phpeq = null, $types = '*')
     {
-        return $this->new_Op($op, $prio, $this->pattern, !is_null($phpeq) ? $phpeq : '(%s)~~~(%s)', $types);
+        return $this->new_Op($op, $prio, $this->pattern, !is_null($phpeq) ? $phpeq : '((%s)~~~(%s))', $types);
     }
-    /*
-        function error($msgId, $lex = null)
-        {
-            $mess = pps($this->error_msg[$msgId], $msgId);
-            if (is_null($lex)) {
-                $lex = $this->op;
-            }
-            if (!is_null($lex)) {
-                // count a string
-                $lexpos = 0;
-                $line = 0;
-                foreach ($this->lines as $k => $v) {
-                    if ($k >= $lex->pos) break;
-                    $lexpos = $k;
-                    $line = $v;
-                }
 
-                $mess .= sprintf("\n" . 'file: %s<br>line:%s, pos:%s lex:"%s"'
-                    , self::$filename
-                    , $line + 1, pps($lex->pos, -1) - $lexpos, pps($lex->val, -1));
+
+    function error($mess=null, $lex = null)
+    {
+        if(is_null($mess)) return parent::error($mess);
+        $mess .= sprintf("\n" . 'file: %s', $this->filename);
+        if (is_null($lex))
+            $lex=$this->currenttag;
+        if (!empty($lex)) {
+            // count a string
+            $lexpos = $lex->start;
+            $line = 0;
+            foreach ($this->lines as $k => $v) {
+                if ($v >= $lex->start) break;
+                $lexpos = $v;
+                $line = $k+1;
             }
-            throw new Exception($mess);
+
+            $mess .= sprintf('<br>'."\n".'line:%s, pos:%s lex:"%s"'
+                , $line + 1,$lex->start - $lexpos, $lex->val);
         }
-    */
+        $ex = $this->exception_class_name;
+        throw new $ex($mess);
+    }
 
-    function getnext(){
+
+    function getnext()
+    {
         if (count($this->tag_stack) > 0) {
             return $this->currenttag = array_shift($this->tag_stack);
         }
-        static $reg0='';
+        static $reg0 = '';
 
-        if($this->state==0){
+        if ($this->state == 0) {
             // выедаем конструкты вне twig'а
-            if(empty($reg0)){
+            if (empty($reg0)) {
                 $reg0 = "~(.*?)(";
-                foreach (array('COMMENT_LINE', 'VARIABLE_START', 'COMMENT_START','BLOCK_START') as $r)
+                foreach (array('COMMENT_LINE', 'VARIABLE_START', 'COMMENT_START', 'BLOCK_START') as $r)
                     $reg0 .= preg_quote($this->$r, '#~') . '|';
                 $reg0 .= '$)(\-?)~si';
             }
@@ -329,111 +324,113 @@ class twig2php_class extends rpn_class
             $this->getcode();
             while ($this->code && preg_match($reg0, $this->code, $m, 0, $this->start)) {
                 // найти начало следующего тега шаблонизатора
-                $l=strlen($m[1]);
-                if($l>0){
-                    if(empty($m[2]) && $m[1]{$l-1}>"\xC0" || $m[1]{$l-1}=="{" ) {
-                        $l-=1;
+                $l = strlen($m[1]);
+                if ($l > 0) {
+                    if (empty($m[2]) && $m[1]{$l - 1} > "\xC0" || $m[1]{$l - 1} == "{") {
+                        $l -= 1;
                     }
-                    $str=substr($m[1],0,$l);
-                    if($this->trim_state & 1){
-                        $str=preg_replace('/^\s*/s','',$str);
-                        if(!empty($m[2]) || $str) $this->trim_state=0;
+                    $str = substr($m[1], 0, $l);
+                    if ($this->trim_state & 1) {
+                        $str = preg_replace('/^\s*/s', '', $str);
+                        if (!empty($m[2]) || $str) $this->trim_state = 0;
                     }
-                    if($this->trim_state & 4){
-                        $str=preg_replace('/^[ \t]*(\r?\n)/','\1',$str);
-                        $this->trim_state&=!4;
+                    if ($this->trim_state & 4) {
+                        $str = preg_replace('/^[ \t]*(\r?\n)/', '\1', $str);
+                        $this->trim_state &= !4;
                     }
-                    if(count($this->tag_stack)==1){
-                        $this->tag_stack[0]->val.=$str;
+                    if (count($this->tag_stack) == 1) {
+                        $this->tag_stack[0]->val .= $str;
                     } else {
-                        $this->tag_stack[]=$this->oper($str, self::TYPE_STRING, $this->start);
+                        $this->tag_stack[] = $this->oper($str, self::TYPE_STRING, $this->start);
                     }
                 }
-                $this->start+=$l;
-                if(!empty($m[3])){
-                    $this->trim_state |=2;
-                    $this->start+=1;
+                $this->start += $l;
+                if (!empty($m[3])) {
+                    $this->trim_state |= 2;
+                    $this->start += 1;
                 }
-                if($m[2] && ($this->trim_state & 2)){
-                    if(count($this->tag_stack)==1){
-                        $this->tag_stack[0]->val=rtrim($this->tag_stack[0]->val);
+                if ($m[2] && ($this->trim_state & 2)) {
+                    if (count($this->tag_stack) == 1) {
+                        $this->tag_stack[0]->val = rtrim($this->tag_stack[0]->val);
                     }
-                    $this->trim_state &=!(2+4);
+                    $this->trim_state &= !(2 + 4);
                 }
-                if($m[2] && ($this->trim_state & 4)){
-                    if(count($this->tag_stack)==1){
-                        $this->tag_stack[0]->val=preg_replace('/\r?\n[ \t]*$/','',$this->tag_stack[0]->val);
+                if ($m[2] && ($this->trim_state & 4)) {
+                    if (count($this->tag_stack) == 1) {
+                        $this->tag_stack[0]->val = preg_replace('/\r?\n[ \t]*$/', '', $this->tag_stack[0]->val);
                     }
                 }
-                if ( $m[2] == $this->COMMENT_LINE ) {
+                if ($m[2] == $this->COMMENT_LINE) {
                     // читаем до следующего конца строки
                     $this->skiptill('/\r?\n/');
-                    if(count($this->tag_stack)==1){
-                        $this->tag_stack[0]->val=preg_replace('/(\r?\n)[ \t]*$/', '\1',$this->tag_stack[0]->val);
+                    if (count($this->tag_stack) == 1) {
+                        $this->tag_stack[0]->val = preg_replace('/(\r?\n)[ \t]*$/', '', $this->tag_stack[0]->val);
                     }
-                } else if ( $m[2] == $this->COMMENT_START ) {
-                    if($this->COMMENT_XEND==$this->skiptill('/(-)?'.preg_quote($this->COMMENT_END).'/sU')){
-                        $this->trim_state|=1;
+                } else if ($m[2] == $this->COMMENT_START) {
+                    if ($this->COMMENT_XEND == $this->skiptill('/(-)?' . preg_quote($this->COMMENT_END) . '/sU')) {
+                        $this->trim_state |= 1;
                     };
-                } else if ( $m[2] == $this->VARIABLE_START ) {
-                    $this->tag_stack[]=$this->oper('',self::TYPE_OPERATION);
+                } else if ($m[2] == $this->VARIABLE_START) {
+                    $this->tag_stack[] = $this->oper('', self::TYPE_OPERATION);
                     //$this->tag_stack[]=$this->oper('_echo_');
-                    $this->state=1;
-                    $this->start+=strlen($m[2]);
+                    $this->state = 1;
+                    $this->start += strlen($m[2]);
                     break;
-                } else if ( $m[2] == $this->BLOCK_START ) {
-                    if(count($this->tag_stack)==1){
-                        $this->tag_stack[0]->val=preg_replace('/\r?\n[ \t]*$/', '', $this->tag_stack[0]->val);
+                } else if ($m[2] == $this->BLOCK_START) {
+                    if (count($this->tag_stack) == 1) {
+                        $this->tag_stack[0]->val = preg_replace('/\r?\n[ \t]*$/', '', $this->tag_stack[0]->val);
                     }
-                    $this->tag_stack[]=$this->oper('',self::TYPE_COMMA);
-                    $this->state=1;
-                    $this->start+=strlen($m[2]);
+                    $this->tag_stack[] = $this->oper('', self::TYPE_COMMA);
+                    $this->state = 1;
+                    $this->start += strlen($m[2]);
                     break;
-                } else if (''==$m[2] && $m[0]!=''){
-                    //continue;
-                } else {
+                } else if ('' != $m[2] || $m[0] == '') {
                     break; // что-то незаладилось в реге
                 }
                 $this->getcode();
             }
         }
         parent::getnext();
-        if(isset($this->pattern[$this->currenttag->val])){
-            $xO=$this->pattern[$this->currenttag->val];
-            if(is_callable($xO->val)){
-                $this->currenttag->handler=$xO->val;
+        if(false==$this->currenttag){
+            return $this->currenttag;
+        }
+        if ( isset($this->pattern[$this->currenttag->val])) {
+            $xO = $this->pattern[$this->currenttag->val];
+            if (is_callable($xO->val)) {
+                $this->currenttag->handler = $xO->val;
 //                $this->currenttag->type=self::TYPE_OBJECT;
             }
         }
-        if($this->currenttag->val == $this->VARIABLE_END || $this->currenttag->val == $this->BLOCK_END ) {
-            $this->state=0;
+        if ($this->currenttag->val == $this->VARIABLE_END || $this->currenttag->val == $this->BLOCK_END) {
+            $this->state = 0;
             //return $this->getnext();
-        } else if($this->currenttag->val == $this->VARIABLE_XEND
+        } else if ($this->currenttag->val == $this->VARIABLE_XEND
             || $this->currenttag->val == $this->BLOCK_XEND
         ) {
-            $this->trim_state=1;
-            $this->state=0;
+            $this->trim_state = 1;
+            $this->state = 0;
             //return $this->getnext();
         }
-        if($this->currenttag->val == $this->BLOCK_XEND
-        || $this->currenttag->val == $this->BLOCK_END
-        ){
-            $this->trim_state+=4;
+        if ($this->currenttag->val == $this->BLOCK_XEND
+            || $this->currenttag->val == $this->BLOCK_END
+        ) {
+            $this->trim_state += 4;
         }
 
         return $this->currenttag;
     }
 
-    function skiptill($s){
+    function skiptill($s)
+    {
         do {
-            if(preg_match($s, $this->code, $mm,PREG_OFFSET_CAPTURE, $this->start)){
-                $this->start=$mm[0][1]+strlen($mm[0][0]);
+            if (preg_match($s, $this->code, $mm, PREG_OFFSET_CAPTURE, $this->start)) {
+                $this->start = $mm[0][1] + strlen($mm[0][0]);
                 break;
             } else {
-                $this->start=strlen($this->code);
+                $this->start = strlen($this->code);
                 $this->getcode();
             }
-        } while($this->code!='');
+        } while ($this->code != '');
         return $mm[0][0];
     }
 
@@ -449,7 +446,8 @@ class twig2php_class extends rpn_class
         /*if ($op1->handler) {
             return call_user_func($op1->handler, $op1, $op2, 'call');
             //return $op1;
-        } else*/if (($_x0=isset($this->func[$op1->val])) || isset($this->operation[$op1->val])) {
+        } else*/
+        if (($_x0 = isset($this->func[$op1->val])) || isset($this->operation[$op1->val])) {
             //$op2 схлоп
             /*$x = $_x0?$this->func[$op1->val]->val:$this->operation[$op1->val];
             if (is_callable($x)) {
@@ -457,19 +455,19 @@ class twig2php_class extends rpn_class
                 if ($op)
                     $this->pushOp($op);
             } elseif (is_string($x)) {*/
-                if($op2->type==self::TYPE_LIST) {
-                    if($op1->type==self::TYPE_SLICE && $op1->handler){
-                        $op1=call_user_func($op1->handler,$op1,$op2,'call');
-                    } else {
-                        $op1->list = $op2->val;
-                        $op1->type = self::TYPE_CALL;
-                    }
+            if ($op2->type == self::TYPE_LIST) {
+                if ($op1->type == self::TYPE_SLICE && $op1->handler) {
+                    $op1 = call_user_func($op1->handler, $op1, $op2, 'call');
                 } else {
-                    $op1=$this->to(self::TYPE_CALL,$op1);
+                    $op1->list = $op2->val;
                     $op1->type = self::TYPE_CALL;
                 }
-          /*  } else
-                $this->error('wtf4!!!');*/
+            } else {
+                $op1 = $this->to(self::TYPE_CALL, $op1);
+                $op1->type = self::TYPE_CALL;
+            }
+            /*  } else
+                  $this->error('wtf4!!!');*/
         } else {
             //вызов макрокоманды
             if ($op2->type == self::TYPE_LIST) {
@@ -488,14 +486,14 @@ class twig2php_class extends rpn_class
                 }
                 if (isset($this->func[$op1->val])) {
                     //$opX=$this->func[$op1->val];
-                    $opX=$this->oper( sprintf($this->func[$op1->val]->val,$this->to(array('L','value'),$op2)),self::TYPE_OPERAND);
+                    $opX = $this->oper(sprintf($this->func[$op1->val]->val, $this->to(array('L', 'value'), $op2)), self::TYPE_OPERAND);
                 } else if ($op1->type == self::TYPE_SLICE) {
                     // вызов объектного макроса
                     $this->to('I', $op1->list[0]);
                     //$op1->val =$op1->list[0]->val;
-                    $opX=$this->oper( $this->template('callmacroex', array('par1' => $op1->list[0]->val, 'mm' => $op1->list[1]->val, 'param' => $arr)),self::TYPE_OPERAND);
+                    $opX = $this->oper($this->template('callmacroex', array('par1' => $op1->list[0]->val, 'mm' => $op1->list[1]->val, 'param' => $arr)), self::TYPE_OPERAND);
                 } else {
-                    $opX=$this->oper($this->template('callmacro', array('name' => $op1, 'param' => $arr, 'parkeys' => $arrkeys)),self::TYPE_SENTENSE);
+                    $opX = $this->oper($this->template('callmacro', array('name' => $op1, 'param' => $arr, 'parkeys' => $arrkeys)), self::TYPE_SENTENSE);
                 }
                 return $opX;
             } else
@@ -520,8 +518,8 @@ class twig2php_class extends rpn_class
         }
         if (!is_object($res)) return $res;
 
-        foreach ($types as $type){
-           // if(isset(self::$char2class[$type])) $type=self::$char2class[$type];
+        foreach ($types as $type) {
+            // if(isset(self::$char2class[$type])) $type=self::$char2class[$type];
             switch ($type) {
                 /*
                 * служебные операции
@@ -530,7 +528,7 @@ class twig2php_class extends rpn_class
                     $res->val = preg_replace('/^[ \t]*\r?\n/', '', $res->val);
                     break;
                 case 'triml':
-                    $res->val = preg_replace("/^\s*/s", '', $res->val);
+                    $res->val = preg_replace('/^\s*/s', '', $res->val);
                     break;
                 case 'value':
                     if ($res->type == self::TYPE_OBJECT) {
@@ -553,7 +551,7 @@ class twig2php_class extends rpn_class
                 * просто литерал
                 */
                 case self::TYPE_LITERAL:
-                    if ($res->type == self::TYPE_ID || $res->type == self::TYPE_STRING2 || $res->type == self::TYPE_OPERATION ) {
+                    if ($res->type == self::TYPE_ID || $res->type == self::TYPE_STRING2 || $res->type == self::TYPE_OPERATION) {
                     } else {
                         $this->error('plain literal expected');
                     }
@@ -561,33 +559,29 @@ class twig2php_class extends rpn_class
                 /*
                 * преобразования
                 */
-                 case self::TYPE_CALL:
-                     if ($res->type == self::TYPE_COMMA || $res->type == self::TYPE_OPERATION) {
-                        $res->list=array('value'=>array(),'keys'=>array());
-                        $res->type=self::TYPE_CALL;
+                case self::TYPE_CALL:
+                    if ($res->type == self::TYPE_COMMA || $res->type == self::TYPE_OPERATION) {
+                        $res->list = array('value' => array(), 'keys' => array());
+                        $res->type = self::TYPE_CALL;
                     } elseif ($res->type != self::TYPE_CALL) {
                         $this->error('Невозможная комбинация типов (>>call)');
                     }
                     break;
                 case 'I':
                 case self::TYPE_XID:
-                    if ($res->type == self::TYPE_CALL ) {
-                        $this->to('S',$res);
+                    if ($res->type == self::TYPE_CALL) {
+                        $this->to('S', $res);
                     } else if ($res->type == self::TYPE_ID || $res->type == self::TYPE_STRING2) {
-                        if ($this->checkId($res->val)) {
-                            $res->val = '$' . $res->val;
-                            $res->type = self::TYPE_OPERAND;
-                        } else {
-                            $res->val = '$par[\'' . $res->val . '\']';
-                            $res->type = self::TYPE_XID;
-                        };
+                        $this->checkId($res);
+                        $res->val = '$' . $res->val;
+                        $res->type = self::TYPE_OPERAND;
                     } elseif ($res->type == self::TYPE_SLICE) {
                         if (!empty($res->list)) {
                             $this->to('I', $res->list[0]);
                             $res->val = $res->list[0]->val;
-                            if($res->list[0]->type==self::TYPE_STRING){
-                                $res->val =$this->to(array('S','value'),$res->list[0]);
-                            } else if($res->handler) {
+                            if ($res->list[0]->type == self::TYPE_STRING) {
+                                $res->val = $this->to(array('S', 'value'), $res->list[0]);
+                            } else if ($res->handler) {
                                 $res->val = call_user_func($res->handler, $res, '', 'value');
                             } else {
                                 $condition = sprintf('$this->func_bk(%s', $res->list[0]->val);
@@ -607,9 +601,9 @@ class twig2php_class extends rpn_class
                         $res->type = self::TYPE_XSTRING;
                     } elseif ($res->type == self::TYPE_LIST) {
                         $this->to(self::TYPE_XLIST, $res);
-                    } /*elseif ($res->type!=self::TYPE_XID){
-	    		$this->error('waiting for ID')	;
-	    	}*/;
+                    } elseif ($res->type!=self::TYPE_XID && $res->type!=self::TYPE_OBJECT){
+	    		        $this->error('waiting for ID')	;
+	    	        };
                     break;
                 case self::TYPE_XLIST:
                     $this->to('L', $res);
@@ -631,8 +625,11 @@ class twig2php_class extends rpn_class
                         $res->val = '(isset(' . $res->val . ') && !empty(' . $res->val . '))';
                         break;
                     } elseif ($res->type == self::TYPE_XSTRING) {
-                        $res->val = '!empty(' . $res->val . '))';
+                        $res->val = '!!(' . $res->val . ')';
                         break;
+                    } else if($res->type==self::TYPE_SENTENSE){
+                        $this->error('casting to boolean impossible (can\'t call macro this way)');
+ //                       echo $res->type.' ';
                     }
                 // продолжаем то, что ниже!!!!!!!!!
                 case 'L':
@@ -664,9 +661,9 @@ class twig2php_class extends rpn_class
                                 $arr[] = $this->to('S', $res->list['keys'][$i])->val;
                             }
                         }
-                        if($res->handler){
-                            $res=call_user_func($res->handler,$res,$arr);
-                        } else if(isset($this->func[$res->val])){
+                        if ($res->handler) {
+                            $res = call_user_func($res->handler, $res, $arr);
+                        } else if (isset($this->func[$res->val])) {
 
                             $res->val = sprintf($this->func[$res->val],
                                 implode(',', $arr));
@@ -711,17 +708,25 @@ class twig2php_class extends rpn_class
         return $res;
     }
 
-    protected function getcode(){
-        if($this->start>self::BUFLEN){
-            $this->code=substr($this->code,$this->start);
-            if($this->code===false) $this->code='';
-            $this->xstart+=$this->start;
-            $this->start=0;
+    /**
+     * xstart - начало, откуда начинается $this->code;
+     */
+    protected function getcode()
+    {
+        if ($this->start > self::BUFLEN) {
+            $this->code = substr($this->code, $this->start);
+            if ($this->code === false) $this->code = '';
+            $this->xstart += $this->start;
+            $this->start = 0;
         }
-        if(strlen($this->code)<self::BUFLEN && !feof($this->handler)){
-            $this->code.=fread($this->handler,self::BUFLEN);
-            if(strlen($this->code)<2*self::BUFLEN && !feof($this->handler)){
-                $this->code.=fread($this->handler,self::BUFLEN);
+        if (strlen($this->code) < self::BUFLEN && !feof($this->handler)) {
+            $x=strlen($this->code);
+            $this->code .= fread($this->handler, self::BUFLEN);
+            if (strlen($this->code) < 2 * self::BUFLEN && !feof($this->handler)) {
+                $this->code .= fread($this->handler, self::BUFLEN);
+            }
+            while(false!==($x=strpos($this->code,"\n",$x))){
+                $this->lines[]=$this->xstart+$x++;
             }
         }
     }
@@ -739,18 +744,29 @@ class twig2php_class extends rpn_class
      * @param string $classname
      * @return mixed|string
      */
-    function tplcalc($class = 'compiler',$classname= 'compiler')
+    function tplcalc($class = 'compiler', $classname = 'compiler')
     {
-        $this->locals=array();$this->tag_stack=array();
-        $this->code='';
-        $this->opensentence[] = array('tag'=>'class','import'=>array(), 'macro' => array(), 'name' => $class, 'data' => array());
+        $tpl_compiler = 'tpl_' . $class;
+        if ( !is_object($this->tpl_compiler) || get_class($this->tpl_compiler)!=$tpl_compiler ) {
+            if (!class_exists($tpl_compiler)) {
+                // попытка включить файл
+                include_once(template_compiler::options('templates_dir') . $tpl_compiler . '.php');
+            }
+            $this->tpl_compiler = new $tpl_compiler();
+        }
 
-        $tagx = array('tag'=>'block','name' => ' ', 'operand' => count($this->operand), 'data' => array());
+        $this->locals = array();
+        $this->tag_stack = array();
+        $this->code = '';
+        $this->opensentence[] = array('tag' => 'class', 'import' => array(), 'macro' => array(), 'name' => $class, 'data' => array());
+
+        $tagx = array('tag' => 'block', 'name' => ' ', 'operand' => count($this->ex_stack), 'data' => array());
+        $this->opensentence[] = & $tagx;
 
         $this->block_internal(array(), $tagx);
 
-
-        $tag=array_pop($this->opensentence);
+        $tagx = array_pop($this->opensentence);
+        $tag = array_pop($this->opensentence);
         // TODO: разобраться с правильным наследованием _
         // сейчас просто удаляем метод _ из отнаследованного шаблона
         if (!empty($tag['extends'])) {
@@ -760,11 +776,12 @@ class twig2php_class extends rpn_class
             }
             unset($tag['data'][$x]);
         }
-        if(!empty($classname)){
-            $tag['name']=$classname;
+        if (!empty($classname)) {
+            $tag['name'] = $classname;
         }
         $this->popOp();
-        $this->ex_stack[]=$this->oper( $this->template('class', $tag,$class),self::TYPE_SENTENSE);
+        $this->ex_stack[] = $this->oper($this->template('class', $tag), self::TYPE_SENTENSE);
+
     }
 
 
@@ -836,33 +853,35 @@ class twig2php_class extends rpn_class
             $i = $op1->val;
             $y = $op2->val;
             $step = $i > $y ? -1 : 1;
-            $arr=array();$keys=array();
+            $arr = array();
+            $keys = array();
             for (; $i != $y; $i += $step) {
-                $arr[]=null;
-                $keys[]=$this->oper($i, self::TYPE_DIGIT);
+                $arr[] = null;
+                $keys[] = $this->oper($i, self::TYPE_DIGIT);
             }
-            $arr[]=null;
-            $keys[]=$this->oper($y, self::TYPE_DIGIT);
-            $op1->val=array('keys'=>$keys,'value'=>$arr);
-            $op1->type=self::TYPE_LIST;
+            $arr[] = null;
+            $keys[] = $this->oper($y, self::TYPE_DIGIT);
+            $op1->val = array('keys' => $keys, 'value' => $arr);
+            $op1->type = self::TYPE_LIST;
             return $op1;
         } elseif (($op1->type == self::TYPE_STRING && $op2->type == self::TYPE_STRING)) {
             $i = $this->utford($op1->val);
             $y = $this->utford($op2->val);
             $step = $i > $y ? -1 : 1;
             for (; $i != $y; $i += $step) {
-                $arr[]=null;
-                $keys[]=$this->oper($this->utfchr($i), self::TYPE_STRING);
+                $arr[] = null;
+                $keys[] = $this->oper($this->utfchr($i), self::TYPE_STRING);
             }
-            $arr[]=null;
-            $keys[]=$this->oper($this->utfchr($y), self::TYPE_STRING);
-            $op1->val=array('keys'=>$keys,'value'=>$arr);
-            $op1->type=self::TYPE_LIST;
+            $arr[] = null;
+            $keys[] = $this->oper($this->utfchr($y), self::TYPE_STRING);
+            $op1->val = array('keys' => $keys, 'value' => $arr);
+            $op1->type = self::TYPE_LIST;
             return $op1;
         } else { //todo: исправить
             return $this->oper('$this->func_reprange(%s,%s)', self::TYPE_LIST);
         }
     }
+
     /**
      * отработка тега block, блок верхнего уровня является "корневым" элементом
      * @param operand[]|null $tag_waitingfor
@@ -871,140 +890,119 @@ class twig2php_class extends rpn_class
     function block_internal($tag_waitingfor = array(), &$tag = null)
     {
         if (empty($tag))
-            $tag = array('tag'=>'block','data'=>array());
+            $tag = array('tag' => 'block', 'data' => array());
         $tag['operand'] = count($this->ex_stack);
-        $this->pushop('(');
+        //$this->pushop('(');
         do {
-            if ($this->getnext() === false ) {
+            if ($this->getnext() === false) {
                 $this->back();
                 break;
             }
 
-            if($this->currenttag->type==self::TYPE_STRING){
-            // просто строка междутежная
-                $this->syntax_tree[]= $this->currenttag;
+            if ($this->currenttag->type == self::TYPE_STRING) {
+                // просто строка междутежная
+                $this->syntax_tree[] = $this->currenttag;
                 $this->execute();
                 continue;
             }
-            if (!empty($tag_waitingfor) && $this->currenttag->type!=self::TYPE_STRING && in_array($this->currenttag->val, $tag_waitingfor)) {
-            // дождались стоп-тега
+            if (!empty($tag_waitingfor) && $this->currenttag->type != self::TYPE_STRING && in_array($this->currenttag->val, $tag_waitingfor)) {
+                // дождались стоп-тега
                 $this->back();
                 break;
             }
-            if ($this->currenttag->type == self::TYPE_COMMA && empty($this->currenttag->val)) {
+            if ($this->currenttag->type == self::TYPE_COMMA &&($this->currenttag->val=';' || empty($this->currenttag->val))) {
+                $this->execute();
                 // служебный знак препинания, препинаемся
             } elseif ($this->currenttag->type == self::TYPE_OPERATION && empty($this->currenttag->val)) { // {{
-                $this->getExpression();
-                if ($this->currenttag->val!=$this->VARIABLE_END && $this->currenttag->val!=$this->VARIABLE_XEND){
+                $this->getExpression($tag_waitingfor);
+                if ($this->currenttag->val != $this->VARIABLE_END && $this->currenttag->val != $this->VARIABLE_XEND) {
                     $this->error('wrong closed tag used.');
                 }
                 // служебный знак препинания, препинаемся
-            } elseif ( $this->exec_tag($this->currenttag->val)) {
+            } elseif ($this->exec_tag($this->currenttag->val)) {
                 if (isset($this->reserved_words[$this->currenttag->val])
-                    &&($this->reserved_words[$this->currenttag->val] == -2)) {
+                    && ($this->reserved_words[$this->currenttag->val] == -2)
+                ) {
                     // стоп-слово
                     continue;
                 } else {
                     $this->back();
                 }
-            // ведомый науке тег
-            //              break;
+                // ведомый науке тег
+                //              break;
             } else {
                 if (isset($this->reserved_words[$this->currenttag->val])
-                    &&($this->reserved_words[$this->currenttag->val] == -2)) {
+                    && ($this->reserved_words[$this->currenttag->val] == -2)
+                ) {
                     // стоп-слово
+                    continue;
+                } else if ($this->currenttag->type==self::TYPE_ID){
+                    // вызов макрокоманды
+                    $this->back();
+                    $this->getExpression($tag_waitingfor);
+                    $this->back();
                     continue;
                 }
                 // неведомый науке тег, плачем...
                 break;
             }
-        } while (true);
-        $this->pushop(')'); // свернуть все операции
+        } while ($this->currenttag);
+        $this->getnext();
+       // $this->pushop(')'); // свернуть все операции
         $this->execute();
-        $thetype=self::TYPE_OPERAND;
-        if($tag['operand']<count($this->ex_stack)){
-            $x=array();
-            while($tag['operand']<count($this->ex_stack)){
-                $x[]=array_pop($this->ex_stack);
+        $thetype = self::TYPE_OPERAND;
+        if ($tag['operand'] < count($this->ex_stack)) {
+            $x = array();
+            while ($tag['operand'] < count($this->ex_stack)) {
+                $x[] = array_pop($this->ex_stack);
             }
-            while(count($x)>0){
-                $y=array_pop($x);
-                if($y==self::TYPE_STRING && $y->val=='') continue;
-                if($y==self::TYPE_XSTRING && ($y->val=="''" || $y->val=='""')) continue;
-                $y=$this->to('S',$y);
-                if($y->type==self::TYPE_SENTENSE){
-                    $thetype=self::TYPE_SENTENSE;
+            while (count($x) > 0) {
+                $y = array_pop($x);
+                if ($y->type == self::TYPE_STRING && $y->val == '') continue;
+                if ($y->type == self::TYPE_XSTRING && ($y->val == "''" || $y->val == '""')) continue;
+                $y = $this->to('S', $y);
+                if ($y->type == self::TYPE_SENTENSE) {
+                    $thetype = self::TYPE_SENTENSE;
                 }
-                $tag['data'][]=$y;
+                $tag['data'][] = $y;
             }
         }
-        /**
-         * оптимизация данных для вывода блока в шаблоне
-         */
-/*        array_unshift($data, array('string' => "''"));
-        array_push($data, array('string' => "''"));
-        $tag['data'] = array();
-        $laststring = false;
-        $lastidx = -1;
-        foreach ($data as $d) {
-            if (empty($d['data'])) {
-                if ($laststring) {
-                    if ($d['string'] != '' && $d['string'] != "''") {
-                        if (is_array($tag['data'][$lastidx]['string'])) {
-                            array_push($tag['data'][$lastidx]['string'], $d['string']);
-                        } else {
-                            if ($tag['data'][$lastidx]['string'] == "''")
-                                $tag['data'][$lastidx]['string'] = array(
-                                    $d['string']
-                                );
-                            else
-                                $tag['data'][$lastidx]['string'] = array(
-                                    $tag['data'][$lastidx]['string'],
-                                    $d['string']
-                                );
-                        }
-                    }
-                } else {
-                    $laststring = true;
-                    $tag['data'][] = $d;
-                    $lastidx++;
-                }
-            } else {
-                $laststring = false;
-                $tag['data'][] = $d;
-                $lastidx++;
-            }
-        }
-*/
+
         if (empty($tag['name'])) {
             //$t['data'][] = $this->template('block',$tag,$t['name']);
-            $x=$this->template('block', $tag);
-            if($thetype==self::TYPE_OPERAND){
-                if(false!==strpos($x,'$result.=')) {
-                    $thetype=self::TYPE_SENTENSE;
+            $x = $this->template('block', $tag);
+            if ($thetype == self::TYPE_OPERAND) {
+                if (false !== strpos($x, '$result.=')) {
+                    $thetype = self::TYPE_SENTENSE;
                 }
             }
-            $this->syntax_tree[]=$this->oper($x, $thetype);
+            $this->syntax_tree[] = $this->oper($x, $thetype);
         } else {
             $t =& $this->opensent('class');
-            $t['data'][] = $this->template('block',$tag,$t['name']);
+            $t['data'][] = $this->template('block', $tag, $t['name']);
 //            $this->syntax_tree[]=$this->oper($this->template('block',  $tag), self::TYPE_SENTENSE);
-            $this->syntax_tree[]=$this->oper($this->template('callblock', $tag), self::TYPE_OPERAND);
+            $this->syntax_tree[] = $this->oper($this->template('callblock', $tag), self::TYPE_OPERAND);
         }
         $this->execute();
     }
 
     /**
      * функция проверяем комплект локальных переменных
-     * @param $id
+     * @param operand $id
      * @return bool
      */
     function checkId($id)
     {
         for ($i = $this->ids_low; $i < count($this->locals); $i++) {
-            if ($this->locals[$i] == $id)
+            if ($this->locals[$i] == $id->val)
                 return true;
         }
+        $this->locals[] = $id->val;
+        $tag =& $this->opensent('block', 'macros');
+        if (!isset($tag['param'])) $tag['param'] = array();
+        $tag['param'][] = array(
+            'name' => $id->val, 'value' => '""'
+        );
         return false;
     }
 
@@ -1018,10 +1016,10 @@ class twig2php_class extends rpn_class
         return $op;
     }
 
-    function &opensent($sent)
+    function &opensent($sent, $sent2 = '@@')
     {
         for ($i = count($this->opensentence) - 1; $i >= 0; $i--) {
-            if ($this->opensentence[$i]['tag'] == $sent)
+            if ($this->opensentence[$i]['tag'] == $sent || $this->opensentence[$i]['tag'] == $sent2)
                 return $this->opensentence[$i];
         }
         return null;
@@ -1029,9 +1027,9 @@ class twig2php_class extends rpn_class
 
     function function_filter($op1, $op2)
     {
-        $op2=$this->to(self::TYPE_CALL,$op2);
-        array_unshift($op2->list['value'],null);
-        array_unshift($op2->list['keys'],$op1);
+        $op2 = $this->to(self::TYPE_CALL, $op2);
+        array_unshift($op2->list['value'], null);
+        array_unshift($op2->list['keys'], $op1);
         return $op2;
     }
 
@@ -1065,9 +1063,10 @@ class twig2php_class extends rpn_class
      */
     function tag_macro()
     {
-        $ids_low=$this->ids_low;
-        $this->ids_low=count($this->locals);
+        $ids_low = $this->ids_low;
+        $this->ids_low = count($this->locals);
         $tag = array('tag' => 'macros', 'operand' => count($this->ex_stack), 'data' => array());
+        $this->opensentence[] = & $tag;
         $this->getnext(); // name of macros
         // зарегистрировать как функцию
         $tag['name'] = $this->to(self::TYPE_LITERAL, $this->currenttag)->val;
@@ -1093,7 +1092,7 @@ class twig2php_class extends rpn_class
 
         $tag['param'] = $arr;
 
-        if ($this->currenttag->val != ')'){
+        if ($this->currenttag->val != ')') {
             $this->error('expected )');
         }
 
@@ -1106,11 +1105,12 @@ class twig2php_class extends rpn_class
         $this->popOp();
         $tag['body'] = $this->template('block', $tag);
         array_splice($this->locals, $id_count);
-        $this->getnext();
+        // $this->getnext();
         if ($this->currenttag->val != 'endmacro')
             $this->error('there is no endmacro tag');
         else
             $this->getnext();
+        array_pop($this->opensentence);
         // добавляем в открытый класс определение нового метода
         $sent =& $this->opensent('class');
         if (!empty($sent)) {
@@ -1119,8 +1119,8 @@ class twig2php_class extends rpn_class
             }
             $sent['macro'][] = $tag['name'];
         }
-        $this->locals=array_slice($this->locals,0,$ids_low);
-        $this->ids_low=$ids_low;
+        $this->locals = array_slice($this->locals, 0, $ids_low);
+        $this->ids_low = $ids_low;
     }
 
     /**
@@ -1128,26 +1128,28 @@ class twig2php_class extends rpn_class
      */
     function tag_block()
     {
-        $ids_low=$this->ids_low;
-        $this->ids_low=count($this->locals);
-        $tag = array('tag' => 'block', 'operand' => count($this->operand), 'data' => array());
+        $ids_low = $this->ids_low;
+        $this->ids_low = count($this->locals);
+        $tag = array('tag' => 'block', 'operand' => count($this->ex_stack), 'data' => array());
         $this->getnext(); // name of macros
         // зарегистрировать как функцию
         $tag['name'] = $this->to(self::TYPE_LITERAL, $this->currenttag)->val;
         $this->currentFunction = $tag['name'];
+        $this->opensentence[] =& $tag;
         //$this->getnext();
         $this->block_internal(array('endblock'), $tag);
+        $tag = array_pop($this->opensentence);
         //$this->getnext();
         $tag['body'] = $this->template('block', $tag);
-        $this->getnext();
+        // $this->getnext();
         if ($this->currenttag->val != 'endblock')
             $this->error('there is no endblock tag');
         else
             $this->getnext();
         // добавляем в открытый класс определение нового метода
 
-        $this->locals=array_slice($this->locals,0,$ids_low);
-        $this->ids_low=$ids_low;
+        $this->locals = array_slice($this->locals, 0, $ids_low);
+        $this->ids_low = $ids_low;
     }
 
     /**
@@ -1179,21 +1181,28 @@ class twig2php_class extends rpn_class
         // elif EXPRESSION
         // else EXPRESSION
         // endif
-        $tag = array('tag' => 'if', 'operand' => count($this->operand), 'data' => array());
+        $tag = array('tag' => 'if', 'operand' => count($this->ex_stack), 'data' => array(),'starttag'=>$this->currenttag);
 
         do {
             // сюда входим с уже полученым тегом if или elif
-            $this->getExpression();
+            $otag=$this->getExpression();
             $op = $this->popOp();
             $data = array(
                 'if' => $this->to(array('B', 'value'), $op)
             );
+            if($otag->val=='set' || $otag->val=='if' || $otag->val=='for'){
+                $this->back();
+            }
             // $this->getnext(); // выдали таг
             $this->block_internal(array('elseif', 'elif', 'else', 'endif'));
             $op = $this->popOp();
             $data['then'] = $this->to(array(self::TYPE_SENTENSE, 'value'), $op);
             $tag['data'][] = $data;
-            $this->getnext(); // выдали таг
+            // $this->getnext(); // выдали таг
+            if (!$this->currenttag) {
+                $this->error('Unclosed IF tag',$tag['starttag']);
+                break;
+            };
             if ($this->currenttag->val == 'endif')
                 break;
             if ($this->currenttag->val == 'else') {
@@ -1205,12 +1214,15 @@ class twig2php_class extends rpn_class
                     'then' => $this->to(array(self::TYPE_SENTENSE, 'value'), $op)
                 );
                 $tag['data'][] = $data;
-                $this->getnext(); // выдали таг
+                // $this->getnext(); // выдали таг
                 break;
             }
-        } while (true);
-        $this->getnext(); // съели символ, закрывающий тег
-        $this->syntax_tree[]=$this->oper($this->template('if', $tag), self::TYPE_SENTENSE);
+        } while ($this->currenttag);
+        $xtag=$this->getnext(); // съели символ, закрывающий тег
+        if($xtag->val!=$this->BLOCK_XEND && $xtag->val!=$this->BLOCK_END && $xtag->val!=$this->VARIABLE_END && $xtag->val!=$this->VARIABLE_XEND){
+            $this->back($xtag);
+        }
+        $this->syntax_tree[] = $this->oper($this->template('if', $tag), self::TYPE_SENTENSE);
         $this->execute();
         return;
     }
@@ -1235,7 +1247,7 @@ class twig2php_class extends rpn_class
     {
         $set = array('tag' => 'set', 'operand' => count($this->ex_stack));
         $this->getExpression(array('='));
-        $id =$this->popOp(); // получили имя идентификатора
+        $id = $this->popOp(); // получили имя идентификатора
         $id = $this->newId($id);
         //$this->locals[]=$id->val;
         $set['id'] = $this->to(array('I', 'value'), $id);
@@ -1251,7 +1263,7 @@ class twig2php_class extends rpn_class
         else
             $set['res'] = $this->to('*', $set['res'])->val;
         // $this->getnext();
-        $this->syntax_tree[]=$this->oper($this->template('set', $set), self::TYPE_SENTENSE);
+        $this->syntax_tree[] = $this->oper($this->template('set', $set), self::TYPE_SENTENSE);
         $this->execute();
         return;
     }
@@ -1260,27 +1272,16 @@ class twig2php_class extends rpn_class
      * Встроенные в класс рендерер ...
      * @param string $idx - имя подшаблона "" - корневой подшаблон
      * @param array $par - данные для рендеринга
-     * @param string $tpl_class - имя базового шаблона
      * @return mixed|string
      */
-    function template($idx = null, $par = null, $tpl_class = 'compiler')
+    function template($idx = null, $par = null)
     {
-        static $tpl_compiler;
-        if (!is_null($tpl_class) || empty($tpl_compiler)) {
-            $tpl_compiler = 'tpl_' . pps($tpl_class, 'compiler');
-            if (!class_exists($tpl_compiler)) {
-                // попытка включить файл
-                include_once(template_compiler::options('templates_dir') . $tpl_compiler . '.php');
-            }
-            $tpl_compiler = new $tpl_compiler();
-        }
-
         if (!is_null($par)) {
             $x =& $par;
-            if (method_exists($tpl_compiler, '_' . $idx))
-                return call_user_func(array($tpl_compiler, '_' . $idx), $x);
+            if (method_exists($this->tpl_compiler, '_' . $idx))
+                return call_user_func(array($this->tpl_compiler, '_' . $idx), $x);
             else
-                printf('have no template "%s:%s"', $tpl_class, '_' . $idx);
+                printf('have no template "%s:%s"', get_class( $this->tpl_compiler), '_' . $idx);
         }
         return '';
     }
@@ -1300,14 +1301,14 @@ class twig2php_class extends rpn_class
         /*if (class_exists($name, false)) {
             $tag = new $name();
             $tag->execute($this);
-        } else */ if (method_exists($this, $name)) {
+        } else */
+        if (method_exists($this, $name)) {
             call_user_func(array($this, $name));
         } else
             return false;
 
         return true;
     }
-
 
 
     /**
@@ -1319,10 +1320,10 @@ class twig2php_class extends rpn_class
      */
     function operand_loop($op1 = null, $attr = null, $reson = 'attr')
     {
-        if($op1->type==self::TYPE_SLICE){
-            $_attr='';
-            for($i=1;$i<count($op1->list);$i++)
-                $_attr.='.'.$op1->list[$i]->val;
+        if ($op1->type == self::TYPE_SLICE) {
+            $_attr = '';
+            for ($i = 1; $i < count($op1->list); $i++)
+                $_attr .= '.' . $op1->list[$i]->val;
         } else
             $_attr = property_exists($op1, 'attr') ? $op1->attr : '';
         $tag = & $this->opensent('for');
@@ -1389,6 +1390,7 @@ class twig2php_class extends rpn_class
                     $this->error('undefined loop attribute-"' . $_attr . '"!');
             }
         }
+        return null;
     }
 
     /**
@@ -1405,8 +1407,8 @@ class twig2php_class extends rpn_class
             'loopdepth' => count($this->opensentence)
         );
         $this->opensentence[] = & $tag;
-       // $x=$this->get_Parameters_list('');
-        $this->getExpression(array('in',',')); // получили имя идентификатора
+        // $x=$this->get_Parameters_list('');
+        $this->getExpression(array('in', ',')); // получили имя идентификатора
         $id = $this->newId($this->popOp());
         $tag['index'] = $this->to(array('I', 'value'), $id);
         //
@@ -1438,32 +1440,33 @@ class twig2php_class extends rpn_class
                 default:
                     if ($this->currenttag->val == $this->BLOCK_END
                         || $this->currenttag->val == $this->BLOCK_XEND
-                        || $this->currenttag->type == self::TYPE_COMMA)
+                        || $this->currenttag->type == self::TYPE_COMMA
+                    )
                         break 2;
                     else
                         $this->error('unexpected construction1');
             }
-        } while (true);
+        } while ($this->currenttag);
         //$this->opensentence[]=$tag;
 
-        $tag['else'] = false;
+        $tag['_else'] = false;
         do {
             $this->block_internal(array('else', 'endfor'));
-            $this->getNext();
+            //  $this->getNext();
             $op = $this->popOp();
             if ($this->currenttag->val == 'else') {
                 $tag['body'] = $this->to(array(self::TYPE_SENTENSE, 'value'), $op);
-                $tag['else'] = true;
+                $tag['_else'] = true;
                 // $this->getNext(); // съели символ, закрывающий тег
             } elseif ($this->currenttag->val == 'endfor') {
                 $this->getNext(); // съели символ, закрывающий тег
-                if ($tag['else']) {
-                    $tag['else'] = $this->to(array(self::TYPE_SENTENSE, 'value'), $op);
+                if ($tag['_else']) {
+                    $tag['_else'] = $this->to(array(self::TYPE_SENTENSE, 'value'), $op);
                 } else {
                     $tag['body'] = $this->to(array(self::TYPE_SENTENSE, 'value'), $op);
                 }
                 // генерируем все это добро
-                $this->syntax_tree[]=$this->oper($this->template('for', $tag), self::TYPE_SENTENSE);
+                $this->syntax_tree[] = $this->oper($this->template('for', $tag), self::TYPE_SENTENSE);
                 do {
                     $op = array_pop($this->opensentence);
                     if ($op['tag'] == 'for') break;
@@ -1471,9 +1474,21 @@ class twig2php_class extends rpn_class
 
                 break;
             } else {
-                $this->error ('IMproper tag '.$this->currenttag->val);
+                $this->error('Improper tag ' . $this->currenttag->val);
             }
-        } while (true);
+        } while ($this->currenttag);
 
+    }
+
+    function _scratch_($op1, $op2)
+    {
+        if($op2->type==self::TYPE_LIST){
+            foreach($op2->val['keys'] as &$v){
+                if($v->type==self::TYPE_ID){
+                    $v=$this->to('S',$v);
+                }
+            }
+        }
+        return parent::_scratch_($op1, $op2);
     }
 }

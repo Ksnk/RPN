@@ -6,7 +6,6 @@
  * Date: 08.06.15
  * Time: 13:53
  *
- * @method assertEquals - злой phpstorm не видит моего PHPUnit и обижаеццо
  */
 class rpn_classTest extends PHPUnit_Framework_TestCase
 {
