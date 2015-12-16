@@ -76,14 +76,21 @@ class twig2php_DebugTest extends PHPUnit_Framework_TestCase
             return '';
     }
 
-    function test_test334(){
-        $s='<tr style="border:none;"><td colspan="{{ colspan -2}}" height="10"></td></tr>';
-        $data = array('main' => $GLOBALS['engine'], 'colspan' => '10');
-        $pattern = '<tr style="border:none;"><td colspan="8" height="10"></td></tr>';
+    function test_test14()
+    {
+        $data = array('data' => array());
+        $s = '
+        {%- for item in data -%}
+    {{ loop.index }}{{ item }}{{ loop.revindex }}{{ item }}
+    {% else -%}
+    nothing
+{%- endfor %}';
+        $pattern = 'nothing';
         $this->assertEquals(
             $this->compilerX($s, $data), $pattern
         );
     }
+
 
     /**
      * Тестовая функция для проверки логического модуля

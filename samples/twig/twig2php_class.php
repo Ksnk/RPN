@@ -1169,6 +1169,35 @@ class twig2php_class extends rpn_class
     }
 
     /**
+     * Отработка тега фильтр
+     */
+    function tag_filter(){
+        $name=$this->getnext(); // name of macros
+        // зарегистрировать как функцию
+        $xx=$this->getnext(); //todo: if $xx ==%} - все в порядке
+        $x=array();
+        do {
+            $xx=$this->getnext();
+            $x[]=$xx->val;
+        } while($xx->type==9);
+        array_pop($x);
+        $xx=$this->getnext();
+        if($xx->val!='endfilter') $this->error('filter cannot be applied, sorry',$xx);
+        $this->getnext();
+
+        $result=implode("\n",$x);
+        switch(strtolower($name)){
+            case 'scss':
+                include_once '/projects/tools/scssphp/scss.inc.php';
+                $scss= new scssc();
+                $result = $scss->compile($result, 'embeded');
+                break;
+        }
+        $this->syntax_tree[] = $this->oper($result, self::TYPE_STRING);
+        $this->execute();
+    }
+
+    /**
      * отрабoтка тега if
      * @return void
      */
@@ -1182,7 +1211,6 @@ class twig2php_class extends rpn_class
         // else EXPRESSION
         // endif
         $tag = array('tag' => 'if', 'operand' => count($this->ex_stack), 'data' => array(),'starttag'=>$this->currenttag);
-
         do {
             // сюда входим с уже полученым тегом if или elif
             $otag=$this->getExpression();

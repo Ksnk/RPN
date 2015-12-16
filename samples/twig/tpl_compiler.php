@@ -1,6 +1,6 @@
 <?php
 /**
- * this file is created automatically at "23 Jul 2015 23:28". Never change anything, 
+ * this file is created automatically at "16 Dec 2015 15:43". Never change anything, 
  * for your changes can be lost at any time.  
  */
 
@@ -9,8 +9,8 @@ function __construct(){
     parent::__construct();
 }
         
-function _class(&$par,$macro="",$import="",$data="",$name="",$extends=""){
-    extract($par);$result="";
+function _class(&$___par,$macro="",$import="",$data="",$name="",$extends=""){
+    if(!empty($___par))extract($___par);$result="";
         $result.='<?php
 /**
  * this file is created automatically at "'
@@ -80,10 +80,10 @@ $this->macro[\''
 }
 
         
-function _sentence(&$par,$data=""){
-    extract($par);$result="";
+function _sentence(&$___par,$data=""){
+    if(!empty($___par))extract($___par);$result="";
             
-        if( ((($this->func_bk($data,'val'))!=('')) && (($this->func_bk($data,'val'))!=('""'))) && (($this->func_bk($data,'val'))!=('\'\'')) ) {
+        if( (((($this->func_bk($data,'val'))!=(''))) && ((($this->func_bk($data,'val'))!=('""')))) && ((($this->func_bk($data,'val'))!=('\'\''))) ) {
             
         $result.='
         $result.='
@@ -94,8 +94,8 @@ function _sentence(&$par,$data=""){
 }
 
         
-function _callmacro(&$par,$parkeys="",$param="",$name=""){
-    extract($par);$result="";
+function _callmacro(&$___par,$parkeys="",$param="",$name=""){
+    if(!empty($___par))extract($___par);$result="";
         $result.='if(!empty($this->macro[\''
             . $name
             . '\']))
@@ -129,8 +129,8 @@ function _callmacro(&$par,$parkeys="",$param="",$name=""){
 }
 
         
-function _callmacroex(&$par,$par1="",$mm="",$param=""){
-    extract($par);$result="";
+function _callmacroex(&$___par,$par1="",$mm="",$param=""){
+    if(!empty($___par))extract($___par);$result="";
         $result.=$par1
             . '->'
             . $mm
@@ -141,8 +141,8 @@ function _callmacroex(&$par,$par1="",$mm="",$param=""){
 }
 
         
-function _set(&$par,$id="",$res=""){
-    extract($par);$result="";
+function _set(&$___par,$id="",$res=""){
+    if(!empty($___par))extract($___par);$result="";
         $result.=$id
             . '='
             . $res;
@@ -150,8 +150,8 @@ function _set(&$par,$id="",$res=""){
 }
 
         
-function _for(&$par,$loop_index="",$loopdepth="",$loop_last="",$loop_revindex="",$loop_cycle="",$index2="",$else="",$in="",$index="",$body=""){
-    extract($par);$result="";
+function _for(&$___par,$loop_index="",$loopdepth="",$loop_last="",$loop_revindex="",$loop_cycle="",$index2="",$_else="",$in="",$index="",$body=""){
+    if(!empty($___par))extract($___par);$result="";
         $result.='$loop'
             . $loopdepth
             . '_array='
@@ -238,12 +238,12 @@ function _for(&$par,$loop_index="",$loopdepth="",$loop_last="",$loop_revindex=""
     }';
 
             
-        if( $else ) {
+        if( $_else ) {
             
         $result.='
         else {
         '
-            . $else
+            . $_else
             . '
         }';
         };
@@ -251,29 +251,29 @@ function _for(&$par,$loop_index="",$loopdepth="",$loop_last="",$loop_revindex=""
 }
 
         
-function _callblock(&$par,$name=""){
-    extract($par);$result="";
+function _callblock(&$___par,$name=""){
+    if(!empty($___par))extract($___par);$result="";
             $x=$name;
             
         if( $x ) {
             
         $result.='$this->_'
             . $x
-            . '($par)';
+            . '($___par)';
         };
     return $result;
 }
 
         
-function _block(&$par,$name="",$param="",$data=""){
-    extract($par);$result="";
+function _block(&$___par,$name="",$param="",$data=""){
+    if(!empty($___par))extract($___par);$result="";
             
         if( $name ) {
             
         $result.='
 function _'
             . $name
-            . '(&$par';
+            . '(&$___par';
 
             $loop3_array=$param;
     if ((is_array($loop3_array) && !empty($loop3_array))
@@ -296,7 +296,7 @@ function _'
         }
     };
         $result.='){
-    extract($par);$result="";';
+    if(!empty($___par))extract($___par);$result="";';
         };
             $str_is_last=0;
             $loop3_array=$data;
@@ -306,7 +306,7 @@ function _'
         foreach($loop3_array as $blk){
     
             
-        if( (((!($str_is_last)) && ((($this->func_bk($blk,'type'))==(5)) || (($this->func_bk($blk,'type'))==(1)))) && (($this->func_bk($blk,'val'))!=('\'\''))) && (($this->func_bk($blk,'val'))!=('""')) ) {
+        if( (((!($str_is_last)) && (((($this->func_bk($blk,'type'))==(5))) || ((($this->func_bk($blk,'type'))==(1))))) && ((($this->func_bk($blk,'val'))!=('\'\'')))) && ((($this->func_bk($blk,'val'))!=('""'))) ) {
             
         $result.='
         $result.=';
@@ -314,18 +314,18 @@ function _'
             $str_is_last=1;
         };
             
-        if( (($this->func_bk($blk,'type'))==(5)) || (($this->func_bk($blk,'type'))==(1)) ) {
+        if( ((($this->func_bk($blk,'type'))==(5))) || ((($this->func_bk($blk,'type'))==(1))) ) {
             
             
-        if( (($this->func_bk($blk,'val'))!=('""')) && (($this->func_bk($blk,'val'))!=('\'\'')) ) {
+        if( ((($this->func_bk($blk,'val'))!=('""'))) && ((($this->func_bk($blk,'val'))!=('\'\''))) ) {
             
             
-        if( ($str_is_last)>(1) ) {
+        if( (($str_is_last)>(1)) ) {
             
         $result.='
             . ';
         };
-            $str_is_last=($str_is_last)+(1);
+            $str_is_last=(($str_is_last)+(1));
         $result.=$this->func_bk($blk,'val');
         };
         } else {
@@ -360,8 +360,8 @@ function _'
 }
 
         
-function _if(&$par,$data=""){
-    extract($par);$result="";
+function _if(&$___par,$data=""){
+    if(!empty($___par))extract($___par);$result="";
             $if_index=1;
             $if_last=count($data);
             $loop3_array=$data;
@@ -371,7 +371,7 @@ function _if(&$par,$data=""){
         foreach($loop3_array as $d){
     
             
-        if( ($if_index)==(1) ) {
+        if( (($if_index)==(1)) ) {
             
         $result.='
         if( '
@@ -381,7 +381,7 @@ function _if(&$par,$data=""){
             . $this->func_bk($d,'then')
             . '
         }';
-        } elseif( ($this->func_bk($d,'if')) || (($if_index)!=($if_last)) ) {
+        } elseif( ($this->func_bk($d,'if')) || ((($if_index)!=($if_last))) ) {
             
         $result.=' elseif( '
             . $this->func_bk($d,'if')
@@ -398,24 +398,24 @@ function _if(&$par,$data=""){
             . '
         }';
         };
-            $if_index=($if_index)+(1);
+            $if_index=(($if_index)+(1));
         }
     };
     return $result;
 }
 
         
-function _ (&$par){
-    extract($par);$result="";
-        $result.=$this->_class($par)
-            . $this->_sentence($par)
-            . $this->_callmacro($par)
-            . $this->_callmacroex($par)
-            . $this->_set($par)
-            . $this->_for($par)
-            . $this->_callblock($par)
-            . $this->_block($par)
-            . $this->_if($par);
+function _ (&$___par){
+    if(!empty($___par))extract($___par);$result="";
+        $result.=$this->_class($___par)
+            . $this->_sentence($___par)
+            . $this->_callmacro($___par)
+            . $this->_callmacroex($___par)
+            . $this->_set($___par)
+            . $this->_for($___par)
+            . $this->_callblock($___par)
+            . $this->_block($___par)
+            . $this->_if($___par);
     return $result;
 }
 
