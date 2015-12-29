@@ -2,12 +2,12 @@
 
 /**
  * PHP twig-templates translator.
- * <%=point('hat','jscomment');
+ * <%=point('hat','jscomment','
  *
  *
  *
  *
- * %>
+ * ');%>
  */
 class twig2php_class extends rpn_class
 {
@@ -37,7 +37,7 @@ class twig2php_class extends rpn_class
         $COMPRESS_START_BLOCK = true;
 
     /**
-     * Масив для хранения упрощенных способов трансляции конструкции
+     * Масcив для хранения упрощенных способов трансляции конструкции
      * @var operand[] array
      */
     var $pattern = array();
@@ -63,7 +63,7 @@ class twig2php_class extends rpn_class
         //для корректной работы parent()
         /** @var string - скрипт для выполнения */
         $script,
-        $tpl_compiler=null;
+        $tpl_compiler = null;
 
     function __construct($options = array())
     {
@@ -75,10 +75,10 @@ class twig2php_class extends rpn_class
                 + self::ALLOW_ID
                 + self::ALLOW_COMMA
                 + self::ALLOW_DOTSTRATCH
-          //      + self::THROW_EXCEPTION_ONERROR
+            //      + self::THROW_EXCEPTION_ONERROR
             //           + self::CASE_SENCITIVE
         ,
-            'reserved_words' => array('endif'=>-2,'elseif' => -2,'elif' => -2,'for' => -2, 'set' => -2, 'if' => -2),
+            'reserved_words' => array('endif' => -2, 'elseif' => -2, 'elif' => -2, 'for' => -2, 'set' => -2, 'if' => -2),
             'evaluateTag' => array($this, '_calcOpr'),
             'executeOp' => array($this, '_calcOp'));
 
@@ -130,7 +130,7 @@ class twig2php_class extends rpn_class
             ->newFunc('trim')
             ->newFunc('join', '$this->filter_join(%s)')
             ->newFunc('explode', 'explode(%s)')
-            ->newFunc('price', 'number_format(%s,0,"."," ")')
+            ->newFunc('number_format', 'number_format(%s)')
             ->newFunc('default', '$this->filter_default(%s)')
             ->newFunc('justifyleft', '$this->func_justifyL(%s)')
             ->newFunc('slice', '$this->func_slice(%s)')
@@ -281,12 +281,12 @@ class twig2php_class extends rpn_class
     }
 
 
-    function error($mess=null, $lex = null)
+    function error($mess = null, $lex = null)
     {
-        if(is_null($mess)) return parent::error($mess);
+        if (is_null($mess)) return parent::error($mess);
         $mess .= sprintf("\n" . 'file: %s', $this->filename);
         if (is_null($lex))
-            $lex=$this->currenttag;
+            $lex = $this->currenttag;
         if (!empty($lex)) {
             // count a string
             $lexpos = $lex->start;
@@ -294,11 +294,11 @@ class twig2php_class extends rpn_class
             foreach ($this->lines as $k => $v) {
                 if ($v >= $lex->start) break;
                 $lexpos = $v;
-                $line = $k+1;
+                $line = $k + 1;
             }
 
-            $mess .= sprintf('<br>'."\n".'line:%s, pos:%s lex:"%s"'
-                , $line + 1,$lex->start - $lexpos, $lex->val);
+            $mess .= sprintf('<br>' . "\n" . 'line:%s, pos:%s lex:"%s"'
+                , $line + 1, $lex->start - $lexpos, $lex->val);
         }
         $ex = $this->exception_class_name;
         throw new $ex($mess);
@@ -391,10 +391,10 @@ class twig2php_class extends rpn_class
             }
         }
         parent::getnext();
-        if(false==$this->currenttag){
+        if (false == $this->currenttag) {
             return $this->currenttag;
         }
-        if ( isset($this->pattern[$this->currenttag->val])) {
+        if (isset($this->pattern[$this->currenttag->val])) {
             $xO = $this->pattern[$this->currenttag->val];
             if (is_callable($xO->val)) {
                 $this->currenttag->handler = $xO->val;
@@ -601,9 +601,9 @@ class twig2php_class extends rpn_class
                         $res->type = self::TYPE_XSTRING;
                     } elseif ($res->type == self::TYPE_LIST) {
                         $this->to(self::TYPE_XLIST, $res);
-                    } elseif ($res->type!=self::TYPE_XID && $res->type!=self::TYPE_OBJECT){
-	    		        $this->error('waiting for ID')	;
-	    	        };
+                    } elseif ($res->type != self::TYPE_XID && $res->type != self::TYPE_OBJECT) {
+                        $this->error('waiting for ID');
+                    };
                     break;
                 case self::TYPE_XLIST:
                     $this->to('L', $res);
@@ -627,9 +627,9 @@ class twig2php_class extends rpn_class
                     } elseif ($res->type == self::TYPE_XSTRING) {
                         $res->val = '!!(' . $res->val . ')';
                         break;
-                    } else if($res->type==self::TYPE_SENTENSE){
+                    } else if ($res->type == self::TYPE_SENTENSE) {
                         $this->error('casting to boolean impossible (can\'t call macro this way)');
- //                       echo $res->type.' ';
+                        //                       echo $res->type.' ';
                     }
                 // продолжаем то, что ниже!!!!!!!!!
                 case 'L':
@@ -637,10 +637,13 @@ class twig2php_class extends rpn_class
                         $op = array();
                         for ($i = 0; $i < count($res->val['keys']); $i++) {
                             $x = '';
-                            if (!empty($res->value['value'][$i])) {
-                                $x .= $this->to('*', $res->val['value'][$i])->val . '=>';
+                            if (!empty($res->val['value'][$i])) {
+                                if($res->val['keys'][$i]->type==self::TYPE_ID)
+                                    $res->val['keys'][$i]->type=9;
+                                $x .= $this->to('*', $res->val['keys'][$i])->val.'=>'.$this->to('*', $res->val['value'][$i])->val ;
+                            } else {
+                                $x .= $this->to('*', $res->val['keys'][$i])->val;
                             }
-                            $x .= $this->to('*', $res->val['keys'][$i])->val;
                             $op[] = $x;
                         }
                         $res->val = implode(',', $op);
@@ -720,13 +723,13 @@ class twig2php_class extends rpn_class
             $this->start = 0;
         }
         if (strlen($this->code) < self::BUFLEN && !feof($this->handler)) {
-            $x=strlen($this->code);
+            $x = strlen($this->code);
             $this->code .= fread($this->handler, self::BUFLEN);
             if (strlen($this->code) < 2 * self::BUFLEN && !feof($this->handler)) {
                 $this->code .= fread($this->handler, self::BUFLEN);
             }
-            while(false!==($x=strpos($this->code,"\n",$x))){
-                $this->lines[]=$this->xstart+$x++;
+            while (false !== ($x = strpos($this->code, "\n", $x))) {
+                $this->lines[] = $this->xstart + $x++;
             }
         }
     }
@@ -747,7 +750,7 @@ class twig2php_class extends rpn_class
     function tplcalc($class = 'compiler', $classname = 'compiler')
     {
         $tpl_compiler = 'tpl_' . $class;
-        if ( !is_object($this->tpl_compiler) || get_class($this->tpl_compiler)!=$tpl_compiler ) {
+        if (!is_object($this->tpl_compiler) || get_class($this->tpl_compiler) != $tpl_compiler) {
             if (!class_exists($tpl_compiler)) {
                 // попытка включить файл
                 include_once(template_compiler::options('templates_dir') . $tpl_compiler . '.php');
@@ -910,7 +913,7 @@ class twig2php_class extends rpn_class
                 $this->back();
                 break;
             }
-            if ($this->currenttag->type == self::TYPE_COMMA &&($this->currenttag->val=';' || empty($this->currenttag->val))) {
+            if ($this->currenttag->type == self::TYPE_COMMA && ($this->currenttag->val = ';' || empty($this->currenttag->val))) {
                 $this->execute();
                 // служебный знак препинания, препинаемся
             } elseif ($this->currenttag->type == self::TYPE_OPERATION && empty($this->currenttag->val)) { // {{
@@ -936,7 +939,7 @@ class twig2php_class extends rpn_class
                 ) {
                     // стоп-слово
                     continue;
-                } else if ($this->currenttag->type==self::TYPE_ID){
+                } else if ($this->currenttag->type == self::TYPE_ID) {
                     // вызов макрокоманды
                     $this->back();
                     $this->getExpression($tag_waitingfor);
@@ -948,7 +951,7 @@ class twig2php_class extends rpn_class
             }
         } while ($this->currenttag);
         $this->getnext();
-       // $this->pushop(')'); // свернуть все операции
+        // $this->pushop(')'); // свернуть все операции
         $this->execute();
         $thetype = self::TYPE_OPERAND;
         if ($tag['operand'] < count($this->ex_stack)) {
@@ -1171,25 +1174,26 @@ class twig2php_class extends rpn_class
     /**
      * Отработка тега фильтр
      */
-    function tag_filter(){
-        $name=$this->getnext(); // name of macros
+    function tag_filter()
+    {
+        $name = $this->getnext(); // name of macros
         // зарегистрировать как функцию
-        $xx=$this->getnext(); //todo: if $xx ==%} - все в порядке
-        $x=array();
+        $xx = $this->getnext(); //todo: if $xx ==%} - все в порядке
+        $x = array();
         do {
-            $xx=$this->getnext();
-            $x[]=$xx->val;
-        } while($xx->type==9);
+            $xx = $this->getnext();
+            $x[] = $xx->val;
+        } while ($xx->type == 9);
         array_pop($x);
-        $xx=$this->getnext();
-        if($xx->val!='endfilter') $this->error('filter cannot be applied, sorry',$xx);
+        $xx = $this->getnext();
+        if ($xx->val != 'endfilter') $this->error('filter cannot be applied, sorry', $xx);
         $this->getnext();
 
-        $result=implode("\n",$x);
-        switch(strtolower($name)){
+        $result = implode("\n", $x);
+        switch (strtolower($name)) {
             case 'scss':
                 include_once '/projects/tools/scssphp/scss.inc.php';
-                $scss= new scssc();
+                $scss = new scssc();
                 $result = $scss->compile($result, 'embeded');
                 break;
         }
@@ -1210,15 +1214,15 @@ class twig2php_class extends rpn_class
         // elif EXPRESSION
         // else EXPRESSION
         // endif
-        $tag = array('tag' => 'if', 'operand' => count($this->ex_stack), 'data' => array(),'starttag'=>$this->currenttag);
+        $tag = array('tag' => 'if', 'operand' => count($this->ex_stack), 'data' => array(), 'starttag' => $this->currenttag);
         do {
             // сюда входим с уже полученым тегом if или elif
-            $otag=$this->getExpression();
+            $otag = $this->getExpression();
             $op = $this->popOp();
             $data = array(
                 'if' => $this->to(array('B', 'value'), $op)
             );
-            if($otag->val=='set' || $otag->val=='if' || $otag->val=='for'){
+            if ($otag->val == 'set' || $otag->val == 'if' || $otag->val == 'for') {
                 $this->back();
             }
             // $this->getnext(); // выдали таг
@@ -1228,7 +1232,7 @@ class twig2php_class extends rpn_class
             $tag['data'][] = $data;
             // $this->getnext(); // выдали таг
             if (!$this->currenttag) {
-                $this->error('Unclosed IF tag',$tag['starttag']);
+                $this->error('Unclosed IF tag', $tag['starttag']);
                 break;
             };
             if ($this->currenttag->val == 'endif')
@@ -1246,8 +1250,8 @@ class twig2php_class extends rpn_class
                 break;
             }
         } while ($this->currenttag);
-        $xtag=$this->getnext(); // съели символ, закрывающий тег
-        if($xtag->val!=$this->BLOCK_XEND && $xtag->val!=$this->BLOCK_END && $xtag->val!=$this->VARIABLE_END && $xtag->val!=$this->VARIABLE_XEND){
+        $xtag = $this->getnext(); // съели символ, закрывающий тег
+        if ($xtag->val != $this->BLOCK_XEND && $xtag->val != $this->BLOCK_END && $xtag->val != $this->VARIABLE_END && $xtag->val != $this->VARIABLE_XEND) {
             $this->back($xtag);
         }
         $this->syntax_tree[] = $this->oper($this->template('if', $tag), self::TYPE_SENTENSE);
@@ -1309,7 +1313,7 @@ class twig2php_class extends rpn_class
             if (method_exists($this->tpl_compiler, '_' . $idx))
                 return call_user_func(array($this->tpl_compiler, '_' . $idx), $x);
             else
-                printf('have no template "%s:%s"', get_class( $this->tpl_compiler), '_' . $idx);
+                printf('have no template "%s:%s"', get_class($this->tpl_compiler), '_' . $idx);
         }
         return '';
     }
@@ -1510,10 +1514,10 @@ class twig2php_class extends rpn_class
 
     function _scratch_($op1, $op2)
     {
-        if($op2->type==self::TYPE_LIST){
-            foreach($op2->val['keys'] as &$v){
-                if($v->type==self::TYPE_ID){
-                    $v=$this->to('S',$v);
+        if ($op2->type == self::TYPE_LIST) {
+            foreach ($op2->val['keys'] as &$v) {
+                if ($v->type == self::TYPE_ID) {
+                    $v = $this->to('S', $v);
                 }
             }
         }

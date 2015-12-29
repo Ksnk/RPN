@@ -6,6 +6,15 @@
  * Class tpl_test
  */
 if(!class_exists('tpl_test')){
+
+    class sample_test_object {
+        var $xxx='yyy';
+
+        function the_method($a,$b,$c=3){
+            return $a.' '.$b.' '.$c;
+        }
+    }
+
 class tpl_test extends tpl_base
 {
 
@@ -52,6 +61,14 @@ class twig2php_DebugTest extends PHPUnit_Framework_TestCase
         return preg_replace('/\s+/s', ' ', $s);
     }
 
+    function compileFile($filename){
+        static $cnt=0,$r=null;
+        if(is_null($r))$r= new twig2php_class();
+        $r->handler=fopen($filename, "r");
+        $res=''.$r->ev(array('tplcalc','compiler','test'.$cnt));
+        return true;
+    }
+
     function compilerX($src,$par=array(),$method='_'){
         static $cnt=0,$r=null;
         if(is_null($r))$r= new twig2php_class();
@@ -76,20 +93,6 @@ class twig2php_DebugTest extends PHPUnit_Framework_TestCase
             return '';
     }
 
-    function test_test14()
-    {
-        $data = array('data' => array());
-        $s = '
-        {%- for item in data -%}
-    {{ loop.index }}{{ item }}{{ loop.revindex }}{{ item }}
-    {% else -%}
-    nothing
-{%- endfor %}';
-        $pattern = 'nothing';
-        $this->assertEquals(
-            $this->compilerX($s, $data), $pattern
-        );
-    }
 
 
     /**
@@ -143,6 +146,16 @@ class twig2php_DebugTest extends PHPUnit_Framework_TestCase
                 $result = call_user_func($evaluate, $_1) && !call_user_func($evaluate, $_2);
         }
         return $result;
+    }
+
+    function test_test44()
+    {
+        $data = array('main'=>new sample_test_object());
+        $s = file_get_contents('item_card.twig');
+        $pattern = '1 2 3';
+        $this->assertEquals(
+            $this->compileFile('item_card.twig'), true
+        );
     }
 
 }

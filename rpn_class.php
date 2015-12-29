@@ -415,6 +415,20 @@ class rpn_class
                             $this->error('unclosed  parenthesis_0');
                         $place_operand = false;
                         break;
+                    case '{': // это - изображение ассоциативного массива
+                        // выбираем список
+                        $xop = $this->oper('[]', array('list' => array(), 'type' => rpn_class::TYPE_LIST));
+                        $xop->val = $this->get_Parameters_list(':',true);
+                        //$num=$this->get_Comma_separated_list();
+                        if ($this->currenttag->val != '}'){
+                            $this->error('missed }');
+                        }
+                        $this->syntax_tree[] = $xop;
+                        if (!$place_operand) { // вырезка из массива
+                            $this->error('improper place for { array }');
+                        }
+                        $this->execute();
+                        break;
                     case '[': // это - начало скобок
                         // выбираем список
                         $xop = $this->oper('[]', array('list' => array(), 'type' => rpn_class::TYPE_LIST));
@@ -432,6 +446,8 @@ class rpn_class
                     case ')':
                         break 2;
                     case ']':
+                        break 2;
+                    case '}':
                         break 2;
                     case ';':
                         break 2;
@@ -680,14 +696,20 @@ class rpn_class
      * список параметров через запятую, с именами, разделенных = или :
      * Возвращает асссоциативный массив
      */
-    protected function get_Parameters_list($sign = ':')
+    protected function get_Parameters_list($sign = ':',$keyasstring=false)
     {
         $arr = array();
         $keys = array();
+        $keytypes=array(rpn_class::TYPE_ID /*,rpn_class::TYPE_STRING3*/ );
+        if($keyasstring){
+            $keytypes[]=rpn_class::TYPE_STRING;
+            $keytypes[]=rpn_class::TYPE_STRING1;
+            $keytypes[]=rpn_class::TYPE_STRING2;
+        }
 
         do {
             $this->getNext();
-            if (in_array($this->currenttag->type, array(rpn_class::TYPE_ID /*,rpn_class::TYPE_STRING3*/))) { //todo:! Сделать string3
+            if (in_array($this->currenttag->type, $keytypes)) { //todo:! Сделать string3
                 $id = $this->currenttag;
                 $this->getNext();
                 if ($this->currenttag->val == $sign) {

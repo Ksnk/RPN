@@ -39,6 +39,15 @@ class tpl_test extends tpl_base
 
     $GLOBALS['engine'] = new engine();
 }
+
+class sample_test_object {
+    var $xxx='yyy';
+
+    function the_method($a,$b,$c=3){
+        return $a.' '.$b.' '.$c;
+    }
+}
+
 /**
  * Проверка прямого функционала шаблонизатора. Компилируем - выполняем
  *
@@ -973,6 +982,16 @@ XXX;
         );
     }
 
+    function test_test35()
+    {
+        $data = array('data' => array());
+        $s = '{% set foo = ["hello","world"] %}{{foo[0]}}{% set foo = {"foo": \'bar\'} %}{{ foo.foo }}{% set foo = {bar: \'world\'} %}{{ foo.bar }}';
+        $pattern = 'hellobarworld';
+        $this->assertEquals(
+            $this->compilerX($s, $data), $pattern
+        );
+    }
+
     /**
      * длинный текст c чисткой пробелов
      */
@@ -982,6 +1001,26 @@ XXX;
 ',1024*106).'{{- hello -}}'.str_repeat('
 ',1024*106);
         $this->assertEquals($this->compilerX($src,array('hello'=>'Ok')), 'Ok');
+    }
+
+    function test_test36()
+    {
+        $data = array('main'=>(object)array('hello'=>'world'));
+        $s = '{{ main.hello }}';
+        $pattern = 'world';
+        $this->assertEquals(
+            $this->compilerX($s, $data), $pattern
+        );
+    }
+
+    function test_test37()
+    {
+        $data = array('main'=>new sample_test_object());
+        $s = '{{ main.the_method(1,2) }}';
+        $pattern = '1 2 3';
+        $this->assertEquals(
+            $this->compilerX($s, $data), $pattern
+        );
     }
 }
 

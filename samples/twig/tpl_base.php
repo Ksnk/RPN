@@ -244,11 +244,11 @@ Pellentesque dictum scelerisque urna, sed porta odio venenatis ut. Integer aucto
      * -- класс-метод
      * -- объект-атрибут
      * -- класс-метод-параметры
-     * @param string $plugin
-     * @param string $method
-     * @param null $par1
-     * @param null $par2
-     * @param null $par3
+     * @param string $p1
+     * @param string $p2
+     * @param null $p3
+     * @param null $p4
+     * @return mixed
      */
     public function attr($p1 = 'MAIN', $p2 = '_handle', $p3 = null, $p4=null)
     {
@@ -319,8 +319,9 @@ Pellentesque dictum scelerisque urna, sed porta odio venenatis ut. Integer aucto
      * фильтр join
      * @param array $pieces
      * @param string $glue
+     * @return array|string
      */
-    function filter_join($pieces, $glue)
+    function filter_join($pieces, $glue='')
     {
         if (!is_array($pieces)) return $pieces;
         return implode($glue, $pieces);

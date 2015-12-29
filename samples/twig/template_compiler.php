@@ -1,18 +1,17 @@
 <?php
 /**
  * helper class to check template modification time
- * <%=point('hat','jscomment');
-// эти пустые строки оставлены для того, чтобы номера строк совпадали   
-
-
-
-%>
+ * <%=point('hat','jscomment','
+ *
+ *
+ *
+ *
+ *'); %>
  */
 
 /**
  * helper function to check if value is empty
  */
-
 class template_compiler
 {
 
@@ -49,20 +48,20 @@ class template_compiler
             $calc = new twig2php_class();
         }
         //compile it;
-        $fp=false;
+        $fp = false;
         try {
             $fp = fopen($tpl, "r");
-            $calc->filename=$tpl;
-            $calc->handler=$fp;
-         //   set_error_handler(function ($c, $m /*, $f, $l*/) {
-          //      throw new Exception($m, $c);
-          //  }, E_ALL & ~E_NOTICE);
-            $result=''.$calc->ev(array('tplcalc','compiler',$name));
+            $calc->filename = $tpl;
+            $calc->handler = $fp;
+            //   set_error_handler(function ($c, $m /*, $f, $l*/) {
+            //      throw new Exception($m, $c);
+            //  }, E_ALL & ~E_NOTICE);
+            $result = '' . $calc->ev(array('tplcalc', 'compiler', $name));
             fclose($fp);
         } catch (Exception $e) {
             echo $e->getMessage();
             fclose($fp);
-            $result= null;
+            $result = null;
         }
         restore_error_handler();
         //execute it
@@ -87,7 +86,7 @@ class template_compiler
         $ext = self::options('TEMPLATE_EXTENSION', null, 'twig');
 
         if (!class_exists('tpl_base'))
-            include_once (self::options('templates_dir') . 'tpl_base.php');
+            include_once(self::options('templates_dir') . 'tpl_base.php');
 //$time = microtime(true);
         $templates = glob(self::options('TEMPLATE_PATH') . DIRECTORY_SEPARATOR . '*.' . $ext);
         //print_r('xxx'.$templates);echo " !";

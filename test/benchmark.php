@@ -18,6 +18,7 @@ $start_time0=microtime(true);
 
 $r->option(array(
         'flags' => 0//12
+      + rpn_class::SHOW_DEBUG
          // + rpn_class::ALLOW_REAL
     ,
         'operation' => ['+' => 4, '-' => 4, '*' => 5, '/' => 5,],
@@ -27,7 +28,7 @@ $r->option(array(
 
         'evaluateTag' => function ($op) use($r)
             {
-              //  if (0 != ($r->flags & rpn_class::SHOW_DEBUG)) $r->log('eval:' . json_encode($op));
+               // if (0 != ($r->flags & rpn_class::SHOW_DEBUG)) $r->log('eval:' . json_encode($op));
                 if (!is_array($op) || !isset($op['data']))
                     $result = $op;
                 else {
@@ -37,7 +38,7 @@ $r->option(array(
             },
         'executeOp' => function ($op, $_1, $_2, $evaluate, $unop = 0) use ($r)
             {
-              //  if (0 != ($r->flags & rpn_class::SHOW_DEBUG)) $r->log('oper:' . json_encode($_1) . ' ' . $op . ' ' . json_encode($_2));
+               // if (0 != ($r->flags & rpn_class::SHOW_DEBUG)) $r->log('oper:' . json_encode($_1) . ' ' . $op . ' ' . json_encode($_2));
                 if ($op == '+') {
                     return call_user_func($evaluate, $_1) + call_user_func($evaluate, $_2);
                 } else if ($op == '++') {
@@ -71,8 +72,9 @@ $r->option(array(
             }
 ));
 
-$repeat=6000;
+$repeat=1;
 $code=str_repeat('(1+2-4*1)+',$repeat).'0'; // -1 repeated $repeat times with 10*$repeat+1 bytes long
+echo $code;
 $before_calc=memory_get_usage();
 $result = $r->ev($code);
 $peak_mem=memory_get_usage();
