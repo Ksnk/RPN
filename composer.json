@@ -1,0 +1,35 @@
+{
+    "name": "ksnk/twig",
+    "description": "TWIG template engine selfmaking by Ksnk",
+    "minimum-stability": "stable",
+    "version": "1.1.0",
+    "dist": {
+        "url": "ksnk.twig.zip",
+        "type": "zip"
+    },
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "ksnk",
+            "email": "sergekoriakin@gmail.com"
+        }
+    ],
+    "require": {
+        "twig/twig": "^1.23",
+        "ksnk/twigArchive":"1.1.0"
+    },
+
+    "repositories": [
+        {
+            "type": "package",
+            "package": {
+                "name": "ksnk/twigArchive",
+                "version": "1.1.0",
+                "dist": {
+                    "url": "ksnk.twig.zip",
+                    "type": "zip"
+                }
+             }
+        }
+    ]
+}
