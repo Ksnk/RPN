@@ -1,5 +1,5 @@
 {
-    "name": "ksnk/twig",
+    "name": "ksnk/twig2",
     "description": "TWIG template engine selfmaking by Ksnk",
     "minimum-stability": "stable",
     "version": "1.1.0",
@@ -16,20 +16,24 @@
     ],
     "require": {
         "twig/twig": "^1.23",
-        "ksnk/twigArchive":"1.1.0"
+        "ksnk/twig": "1.1.0"
     },
-
     "repositories": [
         {
             "type": "package",
             "package": {
-                "name": "ksnk/twigArchive",
+                "name": "ksnk/twig",
                 "version": "1.1.0",
                 "dist": {
-                    "url": "ksnk.twig.zip",
+                    "url": "http://ksnk.github.io/templater/ksnk.twig.zip",
                     "type": "zip"
+                },
+                "source": {
+                    "url":"http://github.com/ksnk/RPN",
+                    "type":"git",
+                    "reference":"/samples/"
                 }
-             }
+            }
         }
     ]
 }

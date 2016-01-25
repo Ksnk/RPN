@@ -150,11 +150,11 @@ class twig2php_DebugTest extends PHPUnit_Framework_TestCase
 
     function test_test44()
     {
-        $data = array('main'=>new sample_test_object());
-        $s = file_get_contents('item_card.twig');
-        $pattern = '1 2 3';
-        $this->assertEquals(
-            $this->compileFile('item_card.twig'), true
+        $data = array('data_inner'=>array('id'=>456,'sections'=>array(1,2,3),'price'=>5678));
+        $s = '<div data-section="{{ join(data_inner.sections, \',\' )}}">';
+        $pattern = '<div data-section="1,2,3">';
+        $this->assertEquals( $pattern,
+            $this->compilerX($s,$data)
         );
     }
 
