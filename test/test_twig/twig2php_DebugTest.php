@@ -65,7 +65,7 @@ class twig2php_DebugTest extends PHPUnit_Framework_TestCase
         static $cnt=0,$r=null;
         if(is_null($r))$r= new twig2php_class();
         $r->handler=fopen($filename, "r");
-        $res=''.$r->ev(array('tplcalc','compiler','test'.$cnt));
+        $res=''.$r->ev(array('tplcalc','compiler','test'.($cnt++)));
         return true;
     }
 
@@ -147,7 +147,7 @@ class twig2php_DebugTest extends PHPUnit_Framework_TestCase
         }
         return $result;
     }
-
+/*
     function test_test44()
     {
         $data = array('data_inner'=>array('id'=>456,'sections'=>array(1,2,3),'price'=>5678));
@@ -157,6 +157,10 @@ class twig2php_DebugTest extends PHPUnit_Framework_TestCase
             $this->compilerX($s,$data)
         );
     }
-
+*/
+    function test55(){
+        $this->assertEquals( true,
+            $this->compileFile('test1.twig'));
+    }
 }
 

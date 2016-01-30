@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project name="CEL" default="build">
+
+    <taskdef name="preprocess" classname="phing.tasks.ext.preprocessor.preprocessTask"/>
+
+    <target name="buildTwig" description="build twig project files">
+        <preprocess config="configTwig.xml">
+            <param name="target" value="release"/>
+            <param name="dst" value="build/twig"/>
+        </preprocess>
+    </target>
+
+
+    <target name="create TWIG archive" description="create TWIG archive">
+    <delete file="../ksnk.github.com/templater/ksnk.twig.zip"/>
+    <zip destfile="../ksnk.github.com/templater/ksnk.twig.zip">
+        <fileset dir=".">
+            <include name="rpn_class.php" />
+        </fileset>
+        <fileset dir="samples/twig">
+            <include name="twig2php_class.php" />
+            <include name="tpl_compiler.php" />
+            <include name="template_compiler.php" />
+            <include name="tpl_base.php" />
+        </fileset>
+    </zip>
+</target>
+
+</project>

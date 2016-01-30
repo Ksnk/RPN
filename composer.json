@@ -16,7 +16,8 @@
     ],
     "require": {
         "twig/twig": "^1.23",
-        "ksnk/twig": "1.1.0"
+        "ksnk/twig": "1.1.0",
+        "phpclasses/pixpic": ">=0.3"
     },
     "repositories": [
         {
@@ -34,6 +35,13 @@
                     "reference":"/samples/"
                 }
             }
+        },
+        {
+            "type": "composer",
+            "url": "http:\/\/www.phpclasses.org\/"
+        },
+        {
+            "packagist": false
         }
     ]
 }
