@@ -11,13 +11,11 @@
     </target>
 
 
-    <target name="create TWIG archive" description="create TWIG archive">
+    <target name="create TWIG archive" depends="buildTwig" description="create TWIG archive">
     <delete file="../ksnk.github.com/templater/ksnk.twig.zip"/>
     <zip destfile="../ksnk.github.com/templater/ksnk.twig.zip">
-        <fileset dir=".">
+        <fileset dir="build/twig">
             <include name="rpn_class.php" />
-        </fileset>
-        <fileset dir="samples/twig">
             <include name="twig2php_class.php" />
             <include name="tpl_compiler.php" />
             <include name="template_compiler.php" />
