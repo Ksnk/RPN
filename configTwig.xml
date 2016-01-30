@@ -38,6 +38,7 @@ ver: '.$tag.', Last build: '.$buildtime.'
         <file>template_compiler.php</file>
         <file>tpl_compiler.php</file>
         <file>tpl_base.php</file>
+        <file>readme.md</file>
     </files>
     <files  dstdir="$dst">
         <file>rpn_class.php</file>

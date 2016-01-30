@@ -8,7 +8,7 @@
  * ----------------------------------------------------------------------------
  * $Id: Templater engine v 3.0 (C) by Ksnk (sergekoriakin@gmail.com).
  *      based on Twig sintax,
- * ver: , Last build: 1601301924
+ * ver: , Last build: 1601301941
  * GIT: origin	https://github.com/Ksnk/RPN.git (push)$
  * ----------------------------------------------------------------------------
  * License MIT - Serge Koriakin - 2015
@@ -461,7 +461,7 @@ class rpn_class
                             break 2;
                         case ';':
                             break 2;
-                        case ',': //todo: wtf? правильно отделить все строковые значения
+                        case ',':
                             break 2;
                         default:
                             $continue=true;
