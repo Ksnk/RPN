@@ -5,7 +5,7 @@
  * ----------------------------------------------------------------------------
  * $Id: Templater engine v 3.0 (C) by Ksnk (sergekoriakin@gmail.com).
  *      based on Twig sintax,
- * ver: , Last build: 1601301941
+ * ver: , Last build: 1601312127
  * GIT: origin	https://github.com/Ksnk/RPN.git (push)$
  * ----------------------------------------------------------------------------
  * License MIT - Serge Koriakin - 2015
@@ -71,7 +71,7 @@ class twig2php_class extends rpn_class
     {
         // parent::__construct();
         $opt = array(
-            'flags' => 0 /+self::SHOW_DEBUG+self::SHOW_ERROR
+            'flags' => 0 //   +self::SHOW_DEBUG+self::SHOW_ERROR
                 + self::ALLOW_STRINGS
                 + self::ALLOW_REAL
                 + self::ALLOW_ID

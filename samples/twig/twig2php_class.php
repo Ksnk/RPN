@@ -71,7 +71,7 @@ class twig2php_class extends rpn_class
     {
         // parent::__construct();
         $opt = array(
-            'flags' => 0 //**/+self::SHOW_DEBUG+self::SHOW_ERROR
+            'flags' => 0 //   +self::SHOW_DEBUG+self::SHOW_ERROR
                 + self::ALLOW_STRINGS
                 + self::ALLOW_REAL
                 + self::ALLOW_ID
