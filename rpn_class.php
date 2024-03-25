@@ -58,7 +58,7 @@ class rpn_class
      */
     const
         THROW_EXCEPTION_ONERROR = 1 // выкинуть exception в случае ошибки
-    //,    STOP_ONERROR = 2 // не пригодился
+        //,    STOP_ONERROR = 2 // не пригодился
     ,   SHOW_ERROR = 4 // выводить в лог ошибки
     ,   SHOW_DEBUG = 8 // выводить в лог отладку
     ,   EMPTY_FUNCTION_ALLOWED = 16 // допускается автоматическое дописывание пустой функции между операторами
@@ -118,7 +118,7 @@ class rpn_class
     /** @var operand[] - стек операций */
     protected $op = array();
     /** @var mixed стек операндов. В конце останется только один... */
-    protected $ex_stack = array();
+    public $ex_stack = array();
 
     /** @var int начало обрабатываемой конструкции в строке, уже обработанный участок, не вошедший в строку */
     protected $start = 0, $xstart = 0;
@@ -473,11 +473,11 @@ class rpn_class
                         break;
                     }
                     if ($tag->type==rpn_class::TYPE_STRING){
-                            if (!$place_operand && (0 != (self::EMPTY_FUNCTION_ALLOWED & $this->flags))) { // если операции нет - савим пустую операцию
-                                $this->pushop('_EMPTY_');
-                            }
-                            $this->syntax_tree[] = $tag;
-                            $place_operand = false;
+                        if (!$place_operand && (0 != (self::EMPTY_FUNCTION_ALLOWED & $this->flags))) { // если операции нет - савим пустую операцию
+                            $this->pushop('_EMPTY_');
+                        }
+                        $this->syntax_tree[] = $tag;
+                        $place_operand = false;
                     } else if (isset($this->reserved_words[$tag->val])) {
                         if ($this->reserved_words[$tag->val] == -2) {
                             // стоп-слово
@@ -537,6 +537,8 @@ class rpn_class
                         $this->execute();
                         $place_operand = false;
                     } else {
+                        if($tag->val==')')
+                            break 2;
                         if (($_xO || $_xS || $_xU) && $tag->type == self::TYPE_OPERATION) {
                             $this->error(sprintf('improper place for `%s`', $tag));
                         }

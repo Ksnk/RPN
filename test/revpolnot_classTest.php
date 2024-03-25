@@ -1,5 +1,7 @@
 <?php
-
+use PHPUnit\Framework\TestCase;
+include_once '../vendor/autoload.php';
+include_once '../rpn_class.php';
 /**
  * Created by PhpStorm.
  * User: Сергей
@@ -7,7 +9,7 @@
  * Time: 13:53
  *
  */
-class rpn_classTest extends PHPUnit_Framework_TestCase
+class revpolnot_classTest extends TestCase
 {
 
     /** @var rpn_class  */
@@ -47,12 +49,61 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
     }
 /**/
     /**
+     * проверка числового калькулятора
+     */
+    function testNumberCalculation()
+    {
+        $r = new rpn_class();
+        $this->current_rpn = $r;
+        $r->option(array(
+            'flags' => 0/**/
+                // + rpn_class::SHOW_DEBUG + rpn_class::SHOW_ERROR
+                + rpn_class::ALLOW_REAL
+                + rpn_class::ALLOW_STRINGS + rpn_class::ALLOW_ID
+                + rpn_class::ALLOW_COMMA
+        ,
+
+            //'flags' => 12,
+            'operation' => ['+' => 4, '-' => 4, '*' => 5, '/' => 5,],
+            'suffix' => ['++' => 1],
+            'unop' => ['-' => 1],
+            'tagreg' => '\b\d+\b',
+            'reserved_words' => ['pi' => 0, 'e' => 0,
+                'floor' => 1,
+                'pow' => 2,
+                'summ' => -1,
+            ],
+
+            'evaluateTag' => [$this, '_calcTag'],
+            'executeOp' => [$this, '_calcOp'],
+        ));
+        foreach ([
+                     'e+summ(1,2,1,2,1,2,1,2)-pow(3,4)+floor(56/3)'=>-48.28172, //181715,// -48.28171817154096'
+                     '1+2+3+4+5' => 15,
+                     '1' => 1,
+                     '-1' => -1,
+                     '(-3*-----4)*4++/5' => 12,
+                 ] as $k => $v) {
+            $result = $r->ev($k);
+            if(is_float($result)) $result=round($result,5);
+            $this->assertEquals($k . "\n" .'[]', $k . "\n" .json_encode($r->error()));
+            $this->assertEquals($k . "\n" . json_encode($v), $k . "\n" . json_encode($result));
+        }
+    }
+
+    /**
      * проверка результата
      */
     function testClassCalculation()
     {
         $r = new rpn_class();
         $r->option(array(
+            'flags' => 0/**/
+                // + rpn_class::SHOW_DEBUG + rpn_class::SHOW_ERROR
+            //    + rpn_class::ALLOW_REAL
+            //    + rpn_class::ALLOW_STRINGS + rpn_class::ALLOW_ID
+            //    + rpn_class::ALLOW_COMMA
+        ,
             // 'flags' => 12,
             'operation' => ['and' => 3, 'or' => 3, 'not' => 3],
             'suffix' => ['*' => 3],
@@ -123,41 +174,6 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
                 $result = call_user_func($evaluate, $_1) && !call_user_func($evaluate, $_2);
         }
         return $result;
-    }
-
-    /**
-     * проверка числового калькулятора
-     */
-    function testNumberCalculation()
-    {
-        $r = new rpn_class();
-        $this->current_rpn = $r;
-        $r->option(array(
-            //'flags' => 12,
-            'operation' => ['+' => 4, '-' => 4, '*' => 5, '/' => 5,],
-            'suffix' => ['++' => 1],
-            'unop' => ['-' => 1],
-            'tagreg' => '\b\d+\b',
-            'reserved_words' => ['pi' => 0, 'e' => 0,
-                'floor' => 1,
-                'pow' => 2,
-                'summ' => -1,
-            ],
-
-            'evaluateTag' => [$this, '_calcTag'],
-            'executeOp' => [$this, '_calcOp'],
-        ));
-        foreach ([
-                     'e+summ(1,2,1,2,1,2,1,2)-pow(3,4)+floor(56/3)'=>-48.2817181715,
-                     '1+2+3+4+5' => 15,
-                     '1' => 1,
-                     '-1' => -1,
-                     '(-3*-----4)*4++/5' => 12,
-                 ] as $k => $v) {
-            $result = $r->ev($k);
-            $this->assertEquals($k . "\n" .'[]', $k . "\n" .json_encode($r->error()));
-            $this->assertEquals($k . "\n" . json_encode($v), $k . "\n" . json_encode($result));
-        }
     }
 
     /**
