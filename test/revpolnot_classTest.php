@@ -1,7 +1,9 @@
 <?php
 use PHPUnit\Framework\TestCase;
 include_once '../vendor/autoload.php';
-include_once '../rpn_class.php';
+//include_once '../rpn_class.php';
+
+use Ksnk\rpn_class;
 /**
  * Created by PhpStorm.
  * User: Сергей

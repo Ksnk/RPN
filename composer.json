@@ -5,6 +5,11 @@
     "description": "RPN class for back polish notation",
     "version": "1.1.1",
     "license": "Custom",
+    "autoload": {
+        "psr-4": {
+            "Ksnk\\": ""
+        }
+    },
     "authors": [
         {
             "name": "ksnk",
