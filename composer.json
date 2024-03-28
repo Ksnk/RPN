@@ -1,6 +1,6 @@
 {
     "name": "ksnk/rpn",
-    "description": "TWIG template engine selfmaking by Ksnk",
+    "description": "Just a calculator interneal class with samples",
     "minimum-stability": "stable",
     "version": "1.1.0",
     "license": "proprietary",

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * полностью кастомизируемый класс для анализа скобочной записи и трансляции ее
+ * Полностью кастомизируемый класс для анализа скобочной записи и трансляции ее
  * в обратную польскую форму с вызовами и определяемыми юзером операциями
  *
  */
@@ -55,10 +55,10 @@ class rpn_class
     , SHOW_DEBUG = 8 // выводить в лог отладку
     , EMPTY_FUNCTION_ALLOWED = 16 // допускается автоматическое дописывание пустой функции между операторами
 
-    , ALLOW_STRINGS = 32 // допускаются операнды  - строки
+    , ALLOW_STRINGS = 32 // допускаются операнды - строки
     , ALLOW_REAL = 64 // допускаются операнды - вещественные числа.
     , ALLOW_ID = 128 // допускаются операнды - неведомые идентификаторы
-    , ALLOW_COMMA = 256 // допускаются неописанные знаки препинания (,;)
+    , ALLOW_COMMA = 256 // допускаются неописанные знаки препинания
     , ALLOW_DOTSTRATCH = 512 // вырезка из массива точкой
     , CASE_SENCITIVE = 1024
     , USE_ARIPHMETIC = 2048  // Использовать стандартные арифметические операции + - * / ** для числовых вычислений
@@ -90,7 +90,7 @@ class rpn_class
     protected $reserved_words = array();
 
     /**
-     * имя класса-исключения, которое будем вызывать
+     * Имя класса-исключения, которое будем вызывать
      */
     protected $exception_class_name = 'Exception';
 
@@ -98,7 +98,6 @@ class rpn_class
      * callback - обработчики
      */
     protected $handlers = [];
-    protected $uhandlers = [];
     protected $executeOp = null;
     protected $evaluateTag = null;
 
@@ -132,7 +131,6 @@ class rpn_class
     /** @var operand[] - синтаксический поток (почему дерево?) */
     protected $syntax_tree = array();
     private $types = array();
-    private $type = 0;
     private $pastcode = '';
     protected $code;
     /** @var operand[] - массив заранее распознанных тегов */
@@ -150,10 +148,10 @@ class rpn_class
 
     /**
      * Вывод информации об ошибке
-     * @param $mess
+     * @param null $mess
      * @return false|array
      */
-    public function error($mess = null, $op = null)
+    public function error($mess = null)
     {
         if (is_null($mess))
             return $this->errors;
@@ -161,7 +159,7 @@ class rpn_class
         if ($this->allow(self::THROW_EXCEPTION_ONERROR)) {
             $ex = $this->exception_class_name;
             throw new $ex($mess);
-        };
+        }
         $this->errors[] = $mess;
         if ($this->allow(self::SHOW_ERROR)) {
             echo "\n" . $mess . '<br />';
@@ -211,7 +209,8 @@ class rpn_class
      * @param int $par_count
      *      -2 - стоп слово - сразу прекращаем компиляцию блока.
      *      -1 - не контроллировать количество,
-     *      0.. - количество параметров, контроль
+     *      0..x - количество параметров, контроль
+     * @param null $callback
      * @return rpn_class
      */
     function functions($arg, $par_count = 0, $callback = null)
@@ -232,11 +231,13 @@ class rpn_class
     {
         $this->operation[$op] = $prio;
         $this->handlers[$op] = $callback;
+        return $this;
     }
 
     function _un($op, $prio, $callback)
     {
         $this->unop[$op] = [$prio, $callback];
+        return $this;
     }
 
     /**
@@ -286,28 +287,40 @@ class rpn_class
             // добавляем арифметику с обработчиками
             $this->_bin('+', 4, function ($a, $b, $eval) {
                 return $eval($a) + $eval($b);
-            });
-            $this->_bin('-', 4, function ($a, $b, $eval) {
+            })->_bin('-', 4, function ($a, $b, $eval) {
                 return $eval($a) - $eval($b);
-            });
-            $this->_bin('*', 5, function ($a, $b, $eval) {
+            })->_bin('*', 5, function ($a, $b, $eval) {
                 return $eval($a) * $eval($b);
-            });
-            $this->_bin('^', 7, function ($a, $b, $eval) {
+            })->_bin('^', 7, function ($a, $b, $eval) {
                 return pow($eval($a), $eval($b));
-            });
-            $this->_bin('/', 5, function ($a, $b, $eval) {
+            })->_bin('/', 5, function ($a, $b, $eval) {
                 $bb = $eval($b);
                 if ($bb == 0) return INF;
                 return $eval($a) / $bb;
-            });
-            $this->_un('+', 1, function ($a, $eval) {
+            })->_bin('>', 3, function ($a, $b, $eval) {
+                return $eval($a) > $eval($b);
+            })->_bin('<', 3, function ($a, $b, $eval) {
+                return $eval($a) < $eval($b);
+            })->_bin('>=', 3, function ($a, $b, $eval) {
+                return $eval($a) >= $eval($b);
+            })->_bin('<=', 3, function ($a, $b, $eval) {
+                return $eval($a) <= $eval($b);
+            })->_bin('=', 3, function ($a, $b, $eval) {
+                return $eval($a) == $eval($b);
+            })->_bin('?', 1, function ($a, $b, $eval) {
+                if (!is_object($b) || $b->type != rpn_class::TYPE_LIST) {
+                    $this->error('wrong 3sect operation ?:');
+                }
+                $v = $b->val;
+                if (!!$eval($a)) return $v[0];
+                else return $v[1];
+            })->_bin(':', 2, function ($a, $b, $eval) {
+                return new operand([$eval($a), $eval($b)], rpn_class::TYPE_LIST);
+            })->_un('+', 1, function ($a, $eval) {
                 return $eval($a);
-            });
-            $this->_un('-', 1, function ($a, $eval) {
+            })->_un('-', 1, function ($a, $eval) {
                 return -$eval($a);
-            });
-            $this->_suf('++', 1, function ($a, $eval) {
+            })->_suf('++', 1, function ($a, $eval) {
                 return $eval($a) + 1;
             });
             if (empty($this->evaluateTag)) {
@@ -317,12 +330,12 @@ class rpn_class
                     else if ($op->type == self::TYPE_NONE) {
                         $result = 0;
                     } else if ($op->type == self::TYPE_DIGIT) {
-                        if(strlen($op->val)>2 && substr($op->val,0,2)=='0x')
-                            $result=hexdec(substr($op->val,2));
+                        if (strlen($op->val) > 2 && substr($op->val, 0, 2) == '0x')
+                            $result = hexdec(substr($op->val, 2));
                         else
-                            $result =(float) $op->val;
+                            $result = (float)$op->val;
                     } else {
-                        $result = (float) $op->val; // явное преобразование к числу
+                        $result = (float)$op->val; // явное преобразование к числу
                     }
                     return $result;
                 };
@@ -528,7 +541,7 @@ class rpn_class
     }
 
     /**
-     * транслируем в обратную польскую форму
+     * Транслируем в обратную польскую форму
      * @param array $stopwords
      * @return operand
      */
@@ -666,7 +679,7 @@ class rpn_class
                             $tag->type = rpn_class::TYPE_OPERATION;
                         $this->pushop($tag);
                         $place_operand = true;
-                    } else if (($_xf = isset($this->func[$tag->val])) && $place_operand) {
+                    } else if (isset($this->func[$tag->val]) && $place_operand) {
                         $xf = $this->func[$tag->val];
                         if (is_callable($xf->val)) {
                             $tag->handler = $xf->val;
@@ -794,7 +807,7 @@ class rpn_class
     }
 
     /**
-     * вырезка из массива
+     * Вырезка из массива
      * @param operand $op1
      * @param operand $op2
      * @return operand
@@ -849,7 +862,7 @@ class rpn_class
     }
 
     /**
-     * список параметров через запятую, с именами, разделенных = или :
+     * Список параметров через запятую, с именами, разделенных `=` или `:`
      * Возвращает асссоциативный массив
      */
     protected function get_Parameters_list($sign = ':', $keyasstring = false)
@@ -904,7 +917,7 @@ class rpn_class
 }
 
 /**
- * внутренний базовый класс для хранения всякой неведомой зверушки
+ * Внутренний базовый класс для хранения всякой неведомой зверушки
  * @property string call
  * @property string parcount
  */
@@ -918,7 +931,7 @@ class operand
     , $call
     , $parcount
     , $depth
-    , $dinamo=[]
+    , $dinamo = []
     , $prio;
 
     function __set($name, $val)
@@ -928,7 +941,7 @@ class operand
 
     function __get($name)
     {
-        if(isset($this->dinamo[$name]))
+        if (isset($this->dinamo[$name]))
             return $this->dinamo[$name];
         return '';
     }
