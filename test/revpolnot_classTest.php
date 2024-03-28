@@ -18,12 +18,62 @@ class revpolnot_classTest extends TestCase
     var $current_rpn = null;
 
     /**
+     * Проверка результата
+     */
+    function testNumbers()
+    {
+        $r = new rpn_class();
+        $this->current_rpn = $r;
+        $r->option([
+            'flags' => rpn_class::USE_ARIPHMETIC
+        ])->functions([
+            'pi' => function () {
+                return M_PI;
+            },
+            'e' => function () {
+                return M_E;
+            }], 0
+        )->functions([
+            'summ' => function ($args, $evaluate) {
+                $result = 0;
+                foreach ($args as $x) {
+                    $result += $evaluate($x);
+                }
+                return $result;
+            }], -1
+        )->functions([
+            'pow' => function ($args, $evaluate) {
+                return $evaluate($args[0]) ** $evaluate($args[1]);
+            },
+        ], 2
+        )->functions([
+            'floor' => function ($args, $evaluate) {
+                return floor($evaluate($args[0]));
+            }
+        ], 1);
+        foreach ([
+                     '(-3*-----4)*4++/5' => 12,
+                     'e+summ(1,2,1,3,1,2,1,6)-pow(3,4)+floor(56/pi)' => -44.28172,
+                     '1+2+3+4+5' => 15,
+                     '1' => 1,
+                     '-1' => -1,
+
+                 ] as $k => $v) {
+            $result = $r->ev($k);
+            if (is_float($result)) $result = round($result, 5);
+            $this->assertEquals($k . "\n" . '[]', $k . "\n" . json_encode($r->error(), JSON_UNESCAPED_UNICODE));
+            $this->assertEquals($k . "\n" . json_encode($v), $k . "\n" . json_encode($result));
+        }
+    }
+
+    /**
      * Проверка строительства дерева синтаксиса +
      * массовых вычислений. Не остается ли грязи между итерациями?
      */
     /*
     function testBuildingSyntaxTree()
     {
+
         $r = new rpn_class();
         $r->option(array(
             'flags' => rpn_class::EMPTY_FUNCTION_ALLOWED
@@ -45,11 +95,11 @@ class revpolnot_classTest extends TestCase
                      '((((((172* 501*)and 173*) 234*) or 4567*) 345*) not 345) not 128' => '[{"data":"172","type":12},{"op":"*","unop":2},{"data":"501","type":12},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"173","type":12},{"op":"*","unop":2},{"op":"AND"},{"data":"234","type":12},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"4567","type":12},{"op":"*","unop":2},{"op":"OR"},{"data":"345","type":12},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"345","type":12},{"op":"NOT"},{"data":"128","type":12},{"op":"NOT"}]',
                      '(172* (501* and (173* (234* or (4567* (345* and (345 not 128)))))))' => '[{"data":"172","type":12},{"op":"*","unop":2},{"data":"501","type":12},{"op":"*","unop":2},{"data":"173","type":12},{"op":"*","unop":2},{"data":"234","type":12},{"op":"*","unop":2},{"data":"4567","type":12},{"op":"*","unop":2},{"data":"345","type":12},{"op":"*","unop":2},{"data":"345","type":12},{"data":"128","type":12},{"op":"NOT"},{"op":"AND"},{"op":"_EMPTY_"},{"op":"OR"},{"op":"_EMPTY_"},{"op":"AND"},{"op":"_EMPTY_"}]',
                  ] as $k => $v) {
-            $this->assertEquals($k . "\n" .'[]', $k . "\n" .json_encode($r->error()));
+            $this->assertEquals($k . "\n" . '[]', $k . "\n" . json_encode($r->error()));
             $this->assertEquals($k . "\n" . $v, $k . "\n" . json_encode($r->ev($k, false)));
         }
     }
-/**/
+    /**/
 
     /**
      * Проверка результата
@@ -131,7 +181,7 @@ class revpolnot_classTest extends TestCase
 
     /**
      * Тестовая функция для проверки логического модуля
-     * Реализация исчисления тега - сравнение значения на > c константой
+     * Реализация исчисления тега - сравнение значения на > с константой
      * @param $op
      * @return bool
      */

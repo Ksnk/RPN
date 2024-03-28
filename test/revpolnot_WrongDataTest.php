@@ -1,7 +1,6 @@
 <?php
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\TestCase, Ksnk\rpn\rpn_class;
 include_once '../vendor/autoload.php';
-include_once '../rpn_class.php';
 
 /**
  * Created by PhpStorm.
@@ -14,14 +13,14 @@ class revpolnot_WrongDataTest extends TestCase
 {
 
     /**
-     * проверка строительства дерева синтаксиса +
-     * массовых вычислений. не остается ли грязи между итерациями?
+     * Проверка строительства дерева синтаксиса +
+     * массовых вычислений. Не остается ли грязи между итерациями?
      */
     function testBuildingSyntaxTree()
     {
         $r = new rpn_class();
         $r->option(array(
-            'flags' => rpn_class::EMPTY_FUNCTION_ALLOWED
+            'flags' => rpn_class::EMPTY_FUNCTION_ALLOWED+rpn_class::USE_ARIPHMETIC
   //      | 12
         ,
             'operation' => ['and' => 3, 'or' => 3, 'not' => 3],
@@ -31,9 +30,9 @@ class revpolnot_WrongDataTest extends TestCase
         ));
         foreach ([
                      'Hello world!' =>['["something gose wrong."]','null'],
-                     '1 andx 2 notand 3 or 4 not to be!'=>['["[1:5] ","[8:7] ","[26:7] "]','[{"data":"1","type":12},{"data":"2","type":12},{"op":"_EMPTY_"},{"data":"3","type":12},{"op":"_EMPTY_"},{"data":"4","type":12},{"op":"OR"},{"op":"NOT"}]'],
-            '((172* 501*))))))))) not 128'=>['["[14:14] "]','[{"data":"172","type":12},{"op":"*","unop":2},{"data":"501","type":12},{"op":"*","unop":2},{"op":"_EMPTY_"}]'],
-                     '((((((((172* 501*))) not 128'=>['["unclosed  parenthesis_0","unclosed  parenthesis_0","unclosed  parenthesis_0","unclosed  parenthesis_0","unclosed  parenthesis_0"]','[{"data":"172","type":12},{"op":"*","unop":2},{"data":"501","type":12},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"128","type":12},{"op":"NOT"}]'],
+                     '1 andx 2 notand 3 or 4 not to be!'=>['["[1:5] ","[8:7] ","unknown operation or","unknown operation not","something gose wrong!"]','0'],
+            '((172* 501*))))))))) not 128'=>['["uncallable *","uncallable *","something gose wrong!"]','0'],
+                     '((((((((172* 501*))) not 128'=>['["uncallable *","uncallable *","unknown operation not","unclosed  parenthesis_0","unclosed  parenthesis_0","unclosed  parenthesis_0","unclosed  parenthesis_0","unclosed  parenthesis_0","something gose wrong!"]','0'],
                  ] as $k => $v) {
             $result=$r->ev($k,false);
             $this->assertEquals($v[0], json_encode($r->error(),JSON_UNESCAPED_UNICODE));
@@ -49,18 +48,18 @@ class revpolnot_WrongDataTest extends TestCase
         $r = new rpn_class();
         $r->option(array(
              'flags' =>rpn_class::EMPTY_FUNCTION_ALLOWED
-                 +rpn_class::THROW_EXCEPTION_ONERROR,
+                 +rpn_class::THROW_EXCEPTION_ONERROR+rpn_class::USE_ARIPHMETIC,
             'operation' => ['and' => 3, 'or' => 3, 'not' => 3],
             'suffix' => ['*' => 3],
             'tagreg' => '\b(\d+)\b',
             'unop' => ['not' => 3],
         ));
         foreach ([
-                     'Hello world!' =>['"[0:12] "','""'],
+                     'Hello world!' =>['"something gose wrong."','""'],
                      '1 andx 2 notand 3 or 4 not to be!'=>['"[1:5] "','""'],
-                     '((172* 501*))))))))) not 128'=>['"[14:14] "','""'],
-                     '((((((((172* 501*))) not 128'=>['"unclosed  parenthesis_0"','""'],
-                     '12* 12* * not or or 4'=>['"improper place for `OR`"','""'],
+                     '((172* 501*))))))))) not 128'=>['"uncallable *"','""'],
+                     '((((((((172* 501*))) not 128'=>['"uncallable *"','""'],
+                     '12* 12* * not or or 4'=>['"uncallable *"','""'],
                  ] as $k => $v) {
             $mess='';$result='';
             try{
@@ -68,8 +67,8 @@ class revpolnot_WrongDataTest extends TestCase
             } catch(Exception $e){
                 $mess=$e->getMessage();
             }
-            $this->assertEquals($k . "\n" .$v[0], $k . "\n" .json_encode($mess));
-            $this->assertEquals($k . "\n" . $v[1], $k . "\n" . json_encode($result));
+            $this->assertEquals($k . "\n" .$v[0], $k . "\n" .json_encode($mess, JSON_UNESCAPED_UNICODE));
+            $this->assertEquals($k . "\n" . $v[1], $k . "\n" . json_encode($result, JSON_UNESCAPED_UNICODE));
         }
     }
 }

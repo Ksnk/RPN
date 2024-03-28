@@ -1,8 +1,10 @@
 <?php
 /**
- * исчисление категорий
+ * Исчисление категорий
  */
-require '../vendor/autoloader.php';
+require '../vendor/autoload.php';
+
+use Ksnk\rpn\rpn_class, Ksnk\rpn\operand;
 
 /**
  * Исходные данные
@@ -25,7 +27,7 @@ $code='128 (501* not 503*)';
 $item_category =array(128,504);
 
 /**
- *  строим данные по исходным
+ *  Строим данные по исходным
  */
 $parents=array();
 foreach($item_category as $leaf){
@@ -37,16 +39,16 @@ foreach($item_category as $leaf){
 $parents=array_unique($parents);
 
 /**
- * пример выяснения в той ли группе находится товар
+ * Пример выяснения в той ли группе находится товар
  */
-$r=new \rpn_class();
+$r=new rpn_class();
 $r->option([
     'flags'=>rpn_class::EMPTY_FUNCTION_ALLOWED
     //      | 12
     ,
     'operation' =>  ['AND'=>3,'OR'=>3,'NOT'=>3],
     'suffix'    =>  ['*'=>3],
-    'tagreg'    =>  '\b(\d+)\b',
+   // 'tagreg'    =>  '\b(\d+)\b',
     'unop'      =>  ['NOT'=>3],
 
     'evaluateTag'=>function ($op) use ($r,$item_category) {
@@ -115,6 +117,8 @@ $r->option([
         else {
             if(is_array($op->val))
                 $result=$op->val;
+            else if($op->type==rpn_class::TYPE_NONE)
+                $result=array(0) ;
             else
                 $result=array(0+$op->val) ;
             if(''!=$op->suf){
@@ -148,6 +152,8 @@ $r->option([
                 $result= array_diff(call_user_func($evaluate,$_1),call_user_func($evaluate,$_2));
             }
             $r->log('oper:'.json_encode($_1).' '.$op.' '.json_encode($_2).'='.json_encode($result));
+            if(is_object($result))
+                return array_unique($result->val);
             return array_unique($result);
         }]);
 
