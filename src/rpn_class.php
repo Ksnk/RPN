@@ -320,6 +320,8 @@ class rpn_class
                 return $eval($a);
             })->_un('-', 1, function ($a, $eval) {
                 return -$eval($a);
+            })->_un('!', 1, function ($a, $eval) {
+                return !$eval($a);
             })->_suf('++', 1, function ($a, $eval) {
                 return $eval($a) + 1;
             });
