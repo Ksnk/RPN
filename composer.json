@@ -1,12 +1,8 @@
 {
-    "name": "ksnk/twig2",
+    "name": "ksnk/rpn",
     "description": "TWIG template engine selfmaking by Ksnk",
     "minimum-stability": "stable",
     "version": "1.1.0",
-    "dist": {
-        "url": "ksnk.twig.zip",
-        "type": "zip"
-    },
     "license": "proprietary",
     "authors": [
         {
@@ -14,34 +10,17 @@
             "email": "sergekoriakin@gmail.com"
         }
     ],
-    "require": {
-        "twig/twig": "^1.23",
-        "ksnk/twig": "1.1.0",
-        "phpclasses/pixpic": ">=0.3"
-    },
-    "repositories": [
-        {
-            "type": "package",
-            "package": {
-                "name": "ksnk/twig",
-                "version": "1.1.0",
-                "dist": {
-                    "url": "http://ksnk.github.io/templater/ksnk.twig.zip",
-                    "type": "zip"
-                },
-                "source": {
-                    "url":"http://github.com/ksnk/RPN",
-                    "type":"git",
-                    "reference":"/samples/"
-                }
-            }
-        },
-        {
-            "type": "composer",
-            "url": "http:\/\/www.phpclasses.org\/"
-        },
-        {
-            "packagist": false
+    "autoload": {
+        "psr-4": {
+            "Ksnk\\rpn\\": "src"
         }
-    ]
+    },
+
+    "require": {
+        "php": ">=7.3",
+        "ext-json": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "10.2.4"
+    }
 }

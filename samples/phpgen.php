@@ -16,7 +16,7 @@ return $parser ->newOp2('- +',3)
     ->newOpr('time','$self->c_getTime()')
     ;*/
 
-require '../test/autoloader.php';
+require '../vendor/autoloader.php';
 
 // create php-string and create_function with it.
 $r = new rpn_class();

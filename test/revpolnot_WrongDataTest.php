@@ -1,4 +1,7 @@
 <?php
+use PHPUnit\Framework\TestCase;
+include_once '../vendor/autoload.php';
+include_once '../rpn_class.php';
 
 /**
  * Created by PhpStorm.
@@ -7,7 +10,7 @@
  * Time: 13:53
  *
  */
-class rpn_WrongDataTest extends PHPUnit_Framework_TestCase
+class revpolnot_WrongDataTest extends TestCase
 {
 
     /**
@@ -27,14 +30,14 @@ class rpn_WrongDataTest extends PHPUnit_Framework_TestCase
             'unop' => ['not' => 3],
         ));
         foreach ([
-                     'Hello world!' =>['["[0:12] "]','[]'],
+                     'Hello world!' =>['["something gose wrong."]','null'],
                      '1 andx 2 notand 3 or 4 not to be!'=>['["[1:5] ","[8:7] ","[26:7] "]','[{"data":"1","type":12},{"data":"2","type":12},{"op":"_EMPTY_"},{"data":"3","type":12},{"op":"_EMPTY_"},{"data":"4","type":12},{"op":"OR"},{"op":"NOT"}]'],
             '((172* 501*))))))))) not 128'=>['["[14:14] "]','[{"data":"172","type":12},{"op":"*","unop":2},{"data":"501","type":12},{"op":"*","unop":2},{"op":"_EMPTY_"}]'],
                      '((((((((172* 501*))) not 128'=>['["unclosed  parenthesis_0","unclosed  parenthesis_0","unclosed  parenthesis_0","unclosed  parenthesis_0","unclosed  parenthesis_0"]','[{"data":"172","type":12},{"op":"*","unop":2},{"data":"501","type":12},{"op":"*","unop":2},{"op":"_EMPTY_"},{"data":"128","type":12},{"op":"NOT"}]'],
                  ] as $k => $v) {
             $result=$r->ev($k,false);
-            $this->assertEquals($v[0], json_encode($r->error()));
-            $this->assertEquals($k . "\n" . $v[1], $k . "\n" . json_encode($result));
+            $this->assertEquals($v[0], json_encode($r->error(),JSON_UNESCAPED_UNICODE));
+            $this->assertEquals($k . "\n" . $v[1], $k . "\n" . json_encode($result, JSON_UNESCAPED_UNICODE));
         }
     }
 

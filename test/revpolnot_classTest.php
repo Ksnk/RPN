@@ -1,4 +1,8 @@
 <?php
+include_once '../vendor/autoload.php';
+
+use PHPUnit\Framework\TestCase,
+    Ksnk\rpn\rpn_class;
 
 /**
  * Created by PhpStorm.
@@ -7,15 +11,15 @@
  * Time: 13:53
  *
  */
-class rpn_classTest extends PHPUnit_Framework_TestCase
+class revpolnot_classTest extends TestCase
 {
 
-    /** @var rpn_class  */
+    /** @var rpn_class */
     var $current_rpn = null;
 
     /**
-     * проверка строительства дерева синтаксиса +
-     * массовых вычислений. не остается ли грязи между итерациями?
+     * Проверка строительства дерева синтаксиса +
+     * массовых вычислений. Не остается ли грязи между итерациями?
      */
     /*
     function testBuildingSyntaxTree()
@@ -46,13 +50,21 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
         }
     }
 /**/
+
     /**
-     * проверка результата
+     * Проверка результата
      */
     function testClassCalculation()
     {
         $r = new rpn_class();
         $r->option(array(
+            'flags' => 0/**/
+                // + rpn_class::SHOW_DEBUG + rpn_class::SHOW_ERROR
+                //    + rpn_class::ALLOW_REAL
+                //    + rpn_class::ALLOW_STRINGS + rpn_class::ALLOW_ID
+                //    + rpn_class::ALLOW_COMMA
+                + rpn_class::CASE_SENCITIVE
+        ,
             // 'flags' => 12,
             'operation' => ['and' => 3, 'or' => 3, 'not' => 3],
             'suffix' => ['*' => 3],
@@ -66,8 +78,53 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
                      '(172* ) OR (501* OR 128) AND NOT 201*' => true,
                      '(172* ) OR not(501* OR 128) AND NOT 201*' => false,
                  ] as $k => $v) {
-            $result=$r->ev($k);
+            $result = $r->ev($k);
             $this->assertEquals('[]', json_encode($r->error()));
+            $this->assertEquals($k . "\n" . json_encode($v), $k . "\n" . json_encode($result));
+        }
+    }
+
+    /**
+     * Проверка числового калькулятора
+     */
+    function testNumberCalculation()
+    {
+        $r = new rpn_class();
+        $this->current_rpn = $r;
+        $r->option(array(
+            'flags' => 0/**/
+                // + rpn_class::SHOW_DEBUG + rpn_class::SHOW_ERROR
+                + rpn_class::ALLOW_REAL
+            //+ rpn_class::ALLOW_STRINGS + rpn_class::ALLOW_ID
+            //+ rpn_class::ALLOW_COMMA
+        ,
+
+            //'flags' => 12,
+            'operation' => ['+' => 4, '-' => 4, '*' => 5, '/' => 5,],
+            'suffix' => ['++' => 1],
+            'unop' => ['-' => 1],
+            'tagreg' => '\b\d+\b',
+            'reserved_words' => ['pi' => 0, 'e' => 0,
+                'floor' => 1,
+                'pow' => 2,
+                'summ' => -1,
+            ],
+
+            'evaluateTag' => [$this, '_calcTag'],
+            'executeOp' => [$this, '_calcOp'],
+        ));
+        foreach ([
+                     '(-3*-----4)*4++/5' => 12,
+                     'e+summ(1,2,1,2,1,2,1,2)-pow(3,4)+floor(56/3)' => -48.28172, //181715,// -48.28171817154096'
+                     '1+2+3+4+5' => 15,
+                     '1' => 1,
+                     '-1' => -1,
+
+                 ] as $k => $v) {
+            $result = $r->ev($k);
+            if (is_float($result)) $result = round($result, 5);
+            //echo $k, '=', $result, PHP_EOL;
+            $this->assertEquals($k . "\n" . '[]', $k . "\n" . json_encode($r->error()));
             $this->assertEquals($k . "\n" . json_encode($v), $k . "\n" . json_encode($result));
         }
     }
@@ -80,7 +137,7 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
      */
     function _celOp($op)
     {
-        if (!is_a($op,'operand'))
+        if (!is_object($op))
             $result = $op;
         else {
             $result = $op->val > 202;
@@ -125,94 +182,11 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
         return $result;
     }
 
-    /**
-     * проверка числового калькулятора
-     */
-    function testNumberCalculation()
-    {
-        $r = new rpn_class();
-        $this->current_rpn = $r;
-        $r->option(array(
-            //'flags' => 12,
-            'operation' => ['+' => 4, '-' => 4, '*' => 5, '/' => 5,],
-            'suffix' => ['++' => 1],
-            'unop' => ['-' => 1],
-            'tagreg' => '\b\d+\b',
-            'reserved_words' => ['pi' => 0, 'e' => 0,
-                'floor' => 1,
-                'pow' => 2,
-                'summ' => -1,
-            ],
-
-            'evaluateTag' => [$this, '_calcTag'],
-            'executeOp' => [$this, '_calcOp'],
-        ));
-        foreach ([
-                     'e+summ(1,2,1,2,1,2,1,2)-pow(3,4)+floor(56/3)'=>-48.2817181715,
-                     '1+2+3+4+5' => 15,
-                     '1' => 1,
-                     '-1' => -1,
-                     '(-3*-----4)*4++/5' => 12,
-                 ] as $k => $v) {
-            $result = $r->ev($k);
-            $this->assertEquals($k . "\n" .'[]', $k . "\n" .json_encode($r->error()));
-            $this->assertEquals($k . "\n" . json_encode($v), $k . "\n" . json_encode($result));
-        }
-    }
-
-    /**
-     * проверка числового калькулятора
-     *
-     * repeat:10 times; peak:2624B, calc:616B, final:360B, 0.006725 sec spent (2015-06-09 14:25:15)
-     * repeat:1000 times; peak:12528B, calc:616B, final:360B, 0.607545 sec spent (2015-06-09 14:25:35)
-     * repeat:2000 times; peak:22528B, calc:616B, final:360B, 1.248044 sec spent (2015-06-09 14:25:53)
-     * repeat:4000 times; peak:42528B, calc:616B, final:360B, 2.366961 sec spent (2015-06-09 14:26:10)
-     * repeat:6000 times; peak:62528B, calc:616B, final:360B, 3.522547 sec spent (2015-06-09 14:26:27)
-     * repeat:6000 times; peak:62416B, calc:504B, final:328B, 4.055349 sec spent (2015-06-10 21:53:31)
-     * repeat:6000 times; peak:62448B, calc:536B, final:328B, 4.000997 sec spent (2015-06-11 00:13:14)
-     * repeat:6000 times; peak:62448B, calc:536B, final:328B, 4.017533 sec spent (2015-06-13 10:21:18)
-     * repeat:6000 times; peak:62952B, calc:1024B, final:328B, 4.169939 sec spent (2015-06-19 22:23:19)
-     */
-    //*
-    function testTrulyLongCalculation()
-    {
-        $mem0=memory_get_usage();
-        $start_time0=microtime(true);
-        $this->current_rpn = new rpn_class();
-        $this->current_rpn->option(array(
-            // 'flags' => 12,
-            'operation' => ['+' => 4, '-' => 4, '*' => 5, '/' => 5,],
-            'suffix' => ['++' => 1],
-            'unop' => ['-' => 1],
-            'tagreg' => '\b(\d+)\b',
-
-            'evaluateTag' => [$this, '_calcTag'],
-            'executeOp' => [$this, '_calcOp'],
-        ));
-
-        $repeat=extension_loaded('xdebug')?600:6000;
-
-        $code=str_repeat('(1+2-4*1)+',$repeat).'0'; // -1 repeated $repeat times with 10*$repeat+1 bytes long
-        $before_calc=memory_get_usage();
-        $result = $this->current_rpn->ev($code);
-        $peak_mem=memory_get_usage();
-        $this->assertEquals('[]', json_encode($this->current_rpn->error()));
-        $this->assertEquals(  json_encode(-$repeat),   json_encode($result));
-        unset($this->current_rpn,$code,$result);
-        printf("repeat:%d times; peak:%dB, calc:%dB, final:%dB, %f sec spent (%s)\n",
-            $repeat,
-            $peak_mem-$mem0,
-            $peak_mem-$before_calc,
-            memory_get_usage()-$mem0,
-
-            microtime(true)-$start_time0,
-            date("Y-m-d H:i:s"));
-    }
-/**/
+    /**/
     function _calcTag($op)
     {
         //$this->current_rpn->log('eval:' . json_encode($op));
-        if (!is_a($op,'operand'))
+        if (!is_object($op))
             $result = $op;
         else {
             $result = 0 + $op->val; // явное преобразование к числу
@@ -222,7 +196,7 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
 
     function _calcOp($op, $_1, $_2, $evaluate)
     {
-        if (0 == ($this->current_rpn->flags & rpn_class::SHOW_DEBUG))$this->current_rpn->log('oper:' . json_encode($_1) . ' ' . $op . ' ' . json_encode($_2));
+        if (0 == ($this->current_rpn->flags & rpn_class::SHOW_DEBUG)) $this->current_rpn->log('oper:' . json_encode($_1) . ' ' . $op . ' ' . json_encode($_2));
         if ($op == '+') {
             return call_user_func($evaluate, $_1) + call_user_func($evaluate, $_2);
         } else if ($op == '++') {
@@ -240,13 +214,13 @@ class rpn_classTest extends PHPUnit_Framework_TestCase
         } elseif ($op == 'e') {
             return M_E;
         } elseif ($op == 'pow') {
-            return pow(call_user_func($evaluate, $_2[0]),call_user_func($evaluate, $_2[1]));
+            return pow(call_user_func($evaluate, $_2[0]), call_user_func($evaluate, $_2[1]));
         } elseif ($op == 'floor') {
             return floor(call_user_func($evaluate, $_2[0]));
         } elseif ($op == 'summ') {
-            $result=0;
-            foreach($_2 as $x){
-                $result+=call_user_func($evaluate, $x);
+            $result = 0;
+            foreach ($_2 as $x) {
+                $result += call_user_func($evaluate, $x);
             }
             return $result;
         } else {

@@ -2,7 +2,7 @@
 /**
  * исчисление категорий
  */
-require '../test/autoloader.php';
+require '../vendor/autoloader.php';
 
 /**
  * Исходные данные

@@ -5,8 +5,11 @@
  * repeat:6000 times; peak:63912B, calc:1728B, final:3936B, 4.416233 sec spent (2015-06-13 13:53:26)
  * repeat:6000 times; peak:64608B, calc:2312B, final:4632B, 4.627567 sec spent (2015-06-13 19:05:08)
  *
+ * repeat:6000 times; peak:65040B, calc:1672B, final:65040B, 0.556904 sec spent (2024-03-28 08:48:27)
+ *
  */
-require '../test/autoloader.php';
+require '../vendor/autoload.php';
+use Ksnk\rpn\rpn_class;
 
 //$array=[1,2,'last'=>3,4];end($array); $array[key($array)]="It's a last element";echo json_encode($array);
 // just a simple number calculator
@@ -28,11 +31,10 @@ $r->option(array(
 
         'evaluateTag' => function ($op) use($r)
             {
-               // if (0 != ($r->flags & rpn_class::SHOW_DEBUG)) $r->log('eval:' . json_encode($op));
-                if (!is_array($op) || !isset($op['data']))
+                if (!is_object($op))
                     $result = $op;
                 else {
-                    $result = 0 + $op['data']; // явное преобразование к числу
+                    $result = 0 + $op->val; // явное преобразование к числу
                 }
                 return $result;
             },
@@ -72,7 +74,7 @@ $r->option(array(
             }
 ));
 
-$repeat=1;
+$repeat=6000;
 $code=str_repeat('(1+2-4*1)+',$repeat).'0'; // -1 repeated $repeat times with 10*$repeat+1 bytes long
 echo $code;
 $before_calc=memory_get_usage();

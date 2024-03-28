@@ -5,7 +5,8 @@
  * Date: 08.06.15
  * Time: 15:35
  */
-require '../test/autoloader.php';
+require '../vendor/autoload.php';
+use Ksnk\rpn\rpn_class;
 
 // just a simple number calculator
 $r = new rpn_class();
@@ -50,7 +51,7 @@ $r->option(array(
     'evaluateTag' => function ($op) use ($r) {
             /** @var operand|null $op */
             $r->log('eval:' . (is_numeric($op) && is_nan($op) ? 'NaN' : json_encode($op)));
-            if (!is_a($op,'operand'))
+            if (!is_object($op))
                 $result = $op;
             else {
                 $result = 0 + (double)$op->val; // явное преобразование к числу

@@ -2,18 +2,11 @@
 
 /**
  * полностью кастомизируемый класс для анализа скобочной записи и трансляции ее
- * в обратную прольскую форму с вызовами и определяемыми юзером операциями
+ * в обратную польскую форму с вызовами и определяемыми юзером операциями
  *
- * И никакой статики, Карл...
- * <%=point('hat','jscomment','
- *
- *
- *
- *
- *
- *
- * ');%>
  */
+
+namespace Ksnk\rpn;
 class rpn_class
 {
 
@@ -108,8 +101,8 @@ class rpn_class
     /**
      * callback - обработчики
      */
-    protected $executeOp = false;
-    protected $evaluateTag = false;
+    protected $executeOp = null;
+    protected $evaluateTag = null;
 
     /**
      * временные переменные, только на время трансляции или инициализации.
@@ -118,7 +111,7 @@ class rpn_class
     /** @var operand[] - стек операций */
     protected $op = array();
     /** @var mixed стек операндов. В конце останется только один... */
-    protected $ex_stack = array();
+    public $ex_stack = array();
 
     /** @var int начало обрабатываемой конструкции в строке, уже обработанный участок, не вошедший в строку */
     protected $start = 0, $xstart = 0;
@@ -153,33 +146,37 @@ class rpn_class
      */
     public function log($mess)
     {
-        if (0 == ($this->flags & self::SHOW_DEBUG)) return;
+        if ($this->allow(self::SHOW_DEBUG)) return;
         echo "\n" . $mess . '<br />';
     }
 
     /**
      * вывод информации об ошибке
      * @param $mess
-     * @return array
+     * @return false|array
      */
     public function error($mess = null,$op=null)
     {
         if (is_null($mess))
             return $this->errors;
 
-        if (0 != ($this->flags & self::THROW_EXCEPTION_ONERROR)) {
+        if ($this->allow(self::THROW_EXCEPTION_ONERROR)) {
             $ex = $this->exception_class_name;
             throw new $ex($mess);
         };
         $this->errors[] = $mess;
-        if (0 != ($this->flags & self::SHOW_ERROR)) {
+        if ($this->allow(self::SHOW_ERROR)) {
             echo "\n" . $mess . '<br />';
         }
         return false;
     }
 
+    function allow($flag){
+        return (0!==($this->flags & $flag));
+    }
+
     /**
-     * сюда мы будем бросать кости. Потом все вот это назовем полностью
+     * Сюда мы будем бросать кости. Потом все вот это назовем полностью
      * кастомизируемым объектом.
      * На самом деле мы просто сливаем наверх заботу о параметрах
      * @param $opt
@@ -217,7 +214,7 @@ class rpn_class
                 array_keys($this->unop),
                 array_keys($this->suffix))
         );
-        if (0 != (self::EMPTY_FUNCTION_ALLOWED & $this->flags))
+        if ($this->allow(self::EMPTY_FUNCTION_ALLOWED))
             $this->operation['_EMPTY_'] = 3;
         $cake = array(
             'WORD_OP' => array(), // словные операции
@@ -240,12 +237,12 @@ class rpn_class
         $reg = array();
         $this->types = array(0);
         // вставляем в регулярку строки
-        if (0 != ($this->flags & self::ALLOW_STRINGS)) {
+        if ($this->allow(self::ALLOW_STRINGS)) {
             $reg[] = '([\'`"])((?:[^\\1\\\\]|\\\\.)*?)\\1';
             $this->types[] = 0;
             $this->types[] = self::TYPE_STRING;
         }
-        if (0 != ($this->flags & self::ALLOW_DOTSTRATCH)) {
+        if ($this->allow(self::ALLOW_DOTSTRATCH)) {
             $reg[] = '\.\s*(\w+)';
             $this->types[] = self::TYPE_STRATCH;
         }
@@ -266,7 +263,7 @@ class rpn_class
                 $xreg[] = preg_quote($v, '#~');
             }
         }
-        if (!empty($cake['SYMBOL']) && 0 == ($this->flags & self::ALLOW_COMMA)) {
+        if (!empty($cake['SYMBOL'])){//} && $this->allow(self::ALLOW_COMMA)) {
             $xreg[] = '[' . preg_quote($cake['SYMBOL'], '#~') . ']';
         }
 
@@ -275,13 +272,13 @@ class rpn_class
         $this->types[] = self::TYPE_OPERATION;
 
         // вставляем в регулярку вещественные
-        if (0 != ($this->flags & self::ALLOW_REAL)) {
+        if ($this->allow(self::ALLOW_REAL)) {
             $reg[] = '\b(\d\w*(?:\.[\d]+)?(?:E[\+\-][\d]+)?)';
             $this->types[] = self::TYPE_DIGIT;
         }
 
         // вставляем в регулярку идентификаторы
-        if (0 != ($this->flags & self::ALLOW_ID)) {
+        if ($this->allow(self::ALLOW_ID)) {
             $reg [] = '\b([_a-z][\w_]*)';
             $this->types[] = self::TYPE_ID;
         } else if (!empty($this->tagreg)) { // вставляем в регулярку операнды
@@ -289,7 +286,7 @@ class rpn_class
             $this->types[] = self::TYPE_ID;
         }
 
-        if (0 != ($this->flags & self::ALLOW_COMMA)) {
+        if ($this->allow(self::ALLOW_COMMA)) {
             $reg[] = '(.)'; #8 - однобуквенные знаки препинания - TYPE_COMMA
             $this->types[] = self::TYPE_COMMA;
         }
@@ -308,7 +305,7 @@ class rpn_class
      */
     protected function pushop($op, $type = self::TYPE_NONE, $unop = false)
     {
-        if (is_string($op))
+        if (!is_object($op))
             $op = new operand($op, $type);
         if ($unop) {
             $op->unop = 1;
@@ -318,6 +315,9 @@ class rpn_class
         }
         if ($op->val == '(') {
             $op->depth = count($this->syntax_tree);
+        }
+        if($type!=self::TYPE_NONE){
+            $op->type=$type;
         }
         while (!empty($this->op) && $op->val != '(') {
             $past = array_pop($this->op);
@@ -374,13 +374,16 @@ class rpn_class
                 }
             if ($type == self::TYPE_STRING) {
                 $tag = $this->oper(stripslashes($tag), self::TYPE_STRING);
-            } else if (0 == ($this->flags & self::CASE_SENCITIVE)) {
+            } else if ($this->allow(self::CASE_SENCITIVE)) {
                 $tag = $this->oper(strtolower($tag), array('type' => $type));
             }
             //$tag = $m[1][0];
             $this->start = $m[0][1] + strlen($m[0][0]);
-            $tag->start = $this->xstart + $this->start;
-            //$tag = new operand($tag, $type, $this->xstart + $this->start);
+            if(is_object($tag)){
+                $tag->pos= $this->xstart + $this->start;
+            } else {
+                $tag = new operand($tag, $type, $this->xstart + $this->start);
+            }
         }
         return $this->currenttag = $tag;
     }
@@ -406,11 +409,11 @@ class rpn_class
                     break;
                 }
                 $continue=true;
-                if($tag->type==self::TYPE_COMMA){
+                if($tag->type==self::TYPE_COMMA || in_array($tag->val,[',','(',')'])){
                     $continue=false;
                     switch ($tag->val) {
                         case '(':
-                            if (!$place_operand && 0 != (self::EMPTY_FUNCTION_ALLOWED & $this->flags)) {
+                            if (!$place_operand && $this->allow(self::EMPTY_FUNCTION_ALLOWED)) {
                                 $this->pushop('_EMPTY_');
                             }
                             if (!$place_operand) { // it's a call
@@ -473,11 +476,11 @@ class rpn_class
                         break;
                     }
                     if ($tag->type==rpn_class::TYPE_STRING){
-                            if (!$place_operand && (0 != (self::EMPTY_FUNCTION_ALLOWED & $this->flags))) { // если операции нет - савим пустую операцию
-                                $this->pushop('_EMPTY_');
-                            }
-                            $this->syntax_tree[] = $tag;
-                            $place_operand = false;
+                        if (!$place_operand && ($this->allow(self::EMPTY_FUNCTION_ALLOWED))) { // если операции нет - савим пустую операцию
+                            $this->pushop('_EMPTY_');
+                        }
+                        $this->syntax_tree[] = $tag;
+                        $place_operand = false;
                     } else if (isset($this->reserved_words[$tag->val])) {
                         if ($this->reserved_words[$tag->val] == -2) {
                             // стоп-слово
@@ -491,7 +494,7 @@ class rpn_class
                                 if ('(' == $this->getnext()) {
                                     $parcount = 1;
                                     $last = count($this->ex_stack);
-                                    while (',' == ($x = (string)$this->getExpression())) {
+                                    while (',' == ($x = (string)$this->getExpression([',']))) {
                                         /*  //todo: repair
                                         if($this->canexecute) {
                                              $this->execute();
@@ -537,11 +540,13 @@ class rpn_class
                         $this->execute();
                         $place_operand = false;
                     } else {
+                        if($tag->val==')')
+                            break 2;
                         if (($_xO || $_xS || $_xU) && $tag->type == self::TYPE_OPERATION) {
                             $this->error(sprintf('improper place for `%s`', $tag));
                         }
 
-                        if (!$place_operand && (0 != (self::EMPTY_FUNCTION_ALLOWED & $this->flags))) { // если операции нет - савим пустую операцию
+                        if (!$place_operand && $this->allow(self::EMPTY_FUNCTION_ALLOWED)) { // если операции нет - ставим пустую операцию
                             $this->pushop('_EMPTY_');
                         }
                         $this->syntax_tree[] = $tag;
@@ -639,7 +644,6 @@ class rpn_class
 
     /**
      * Создание нового операнда. Для возможности переопределения класса операнда
-     * Единственное место, где встречается слово operand - имя класса
      */
     function oper($value, $type = self::TYPE_NONE, $pos = 0)
     {
@@ -656,7 +660,7 @@ class rpn_class
      * вырезка из массива
      * @param operand $op1
      * @param operand $op2
-     * @return \operand
+     * @return operand
      */
     function _scratch_($op1, $op2)
     {
@@ -773,6 +777,7 @@ class operand
     , $type // тип операнда
     , $pos // позиция курсора
     , $unop
+    , $start
     , $call
     , $parcount
     , $depth
@@ -804,6 +809,14 @@ class operand
     function __toString()
     {
         return $this->val;
+    }
+
+    // служебные, вспомогательные классы трансформации
+    function mutate($val,$type=null){
+        $this->val = $val;
+        if(!is_null($type))
+            $this->type = $type;
+        return $this;
     }
 
 }
