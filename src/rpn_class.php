@@ -962,7 +962,7 @@ class operand
 
     function __toString()
     {
-        return (string)$this->val;
+        return (string) $this->val;
     }
 
     // служебные, вспомогательные классы трансформации
