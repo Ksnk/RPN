@@ -16,14 +16,11 @@ return $parser ->newOp2('- +',3)
     ->newOpr('time','$self->c_getTime()')
     ;*/
 
-require '../test/autoloader.php';
+require '../vendor/autoload.php';
+use Ksnk\rpn\rpn_class, Ksnk\rpn\operand;
 
 // create php-string and create_function with it.
 $r = new rpn_class();
-
-set_error_handler(function ($c, $m /*, $f, $l*/) {
-    throw new Exception($m, $c);
-}, E_ALL & ~E_NOTICE);
 
 $r->option(array(
     'flags'=>0//rpn_class::SHOW_DEBUG+rpn_class::SHOW_ERROR
@@ -134,9 +131,11 @@ foreach ([  //*
         $result0 = null;
         if (isset($v['x'])) $x = $v['x'];
         if (!empty($result)) {
-            echo ' [' . json_encode($result) . ']';
-            $callback = create_function('$x', 'return ' . $result . ';');
-            $result0 = $callback($x);
+            //echo ' [' . json_encode($result) . ']'."\n";
+            $eval='$x='.var_export($x, true). ';return ' . $result . ';';
+            echo $eval;
+            $result0 = eval($eval);
+            //$result0 = $callback($x);
         }
     } catch (Exception $e) {
         $result = $e->getMessage();
@@ -144,5 +143,5 @@ foreach ([  //*
     echo "\n" . $k . '=' . json_encode($result0) ;
     $error = $r->error();
     if (!empty($error)) echo "\n" . 'error: =' . json_encode($error);
-    echo "\n";
+    echo "\n\n";
 }
