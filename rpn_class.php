@@ -807,7 +807,7 @@ class operand
 
     function __toString()
     {
-        return $this->val;
+        return (string)$this->val;
     }
 
 }
